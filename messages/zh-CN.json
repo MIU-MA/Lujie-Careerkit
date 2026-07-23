@@ -659,7 +659,7 @@
       "undo": "撤销",
       "redo": "重做",
       "optimizing": "优化中...",
-      "optimize": "AI优化简历",
+      "optimize": "AI分析简历",
       "applicationMessage": "求职信",
       "export": "导出",
       "closeTheme": "关闭主题",
@@ -691,6 +691,61 @@
           "subtitle": "分页高清长图"
         }
       }
+    },
+    "diagnosisDialog": {
+      "title": "AI 简历诊断",
+      "description": "先分析当前简历，再由你选择要处理的问题和优化方向。诊断不会修改原简历。",
+      "analyzing": "正在分析简历...",
+      "analyzingHint": "检查行动与结果、事实证据、表达清晰度和结构，不使用机械的 STAR 打分。",
+      "startHint": "分析只会读取脱敏后的当前简历，不会修改或覆盖任何内容。",
+      "analysisDone": "简历诊断完成。",
+      "analysisFailed": "简历诊断失败，请稍后重试。",
+      "summary": "诊断概览",
+      "issuesTitle": "可优化问题",
+      "issuesHint": "已默认选择较重要的问题，你可以取消或重新选择。",
+      "selectedCount": "已选择 {count} 项",
+      "noIssues": "当前没有发现需要优先处理的明显问题。你可以关闭窗口继续使用原简历。",
+      "severity": {
+        "high": "优先处理",
+        "medium": "建议处理",
+        "low": "可选改进"
+      },
+      "groupCount": "共 {count} 项，已选择 {selected} 项",
+      "evidence": "简历原文：{evidence}",
+      "suggestion": "建议：{suggestion}",
+      "preferencesTitle": "怎样优化",
+      "preferencesHint": "优化只会处理你勾选的问题，并始终保留原简历事实。",
+      "preferences": {
+        "clarity": {
+          "title": "表达更清楚",
+          "description": "明确个人行动和贡献，减少模糊职责。"
+        },
+        "impact": {
+          "title": "突出行动与结果",
+          "description": "使用已有证据强化“行动 + 方法 + 结果”。"
+        },
+        "concise": {
+          "title": "更加精简",
+          "description": "压缩重复和冗长句子，保留重要信息。"
+        },
+        "ats": {
+          "title": "ATS 友好",
+          "description": "使用常规表达和已有事实支持的技能关键词。"
+        }
+      },
+      "additionalDirection": {
+        "label": "其他补充",
+        "optional": "可选",
+        "placeholder": "例如：GPA 写法是学校要求，请不要调整；优先优化项目经历，整体语气保持克制。",
+        "hint": "可以纠正诊断理解或补充优化重点，但不会用于编造简历中不存在的经历、技能或数据。"
+      },
+      "optimizing": "正在按你的选择生成优化版本...",
+      "optimizationFailed": "优化失败，请稍后重试。",
+      "close": "暂不优化",
+      "startAnalysis": "开始分析",
+      "reanalyze": "重新分析",
+      "optimizeSelected": "优化已选 {count} 项",
+      "optimizingButton": "正在优化..."
     },
     "applicationMessageDialog": {
       "title": "求职信与招呼语",

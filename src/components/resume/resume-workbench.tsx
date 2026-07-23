@@ -15,12 +15,13 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { EditorCanvas } from "@/components/editor/editor-canvas";
 import { EditorPreviewPanel } from "@/components/editor/editor-preview-panel";
 import { EditorSidebar } from "@/components/editor/editor-sidebar";
 import { ApplicationMessageDialog } from "@/components/resume/application-message-dialog";
+import { ResumeDiagnosisDialog } from "@/components/resume/resume-diagnosis-dialog";
 import { ResumeExportDialog, type ResumeExportFormat } from "@/components/resume/resume-export-dialog";
 import { ResumeLibraryView, type ResumeLibraryViewMode } from "@/components/resume/resume-library-view";
 import { ResumeTemplateBar } from "@/components/resume/resume-template-bar";
@@ -55,6 +56,10 @@ import { buildUploadedResumeDraft } from "@/lib/resume-upload";
 import { DEFAULT_RESUME_THEME } from "@/lib/resume-theme";
 import { readSmartOnePagePreference } from "@/lib/resume-preferences";
 import { normalizeOptimizedResumeVersionName } from "@/lib/resume-versioning";
+import type {
+  ResumeDiagnosis,
+  ResumeOptimizationPreference,
+} from "@/lib/ai/resume-diagnosis";
 import type { ResumeContent, ResumeOptimizationMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
@@ -90,7 +95,14 @@ type ResumeWorkbenchProps = {
   onEditorTargetChange: (versionId?: string) => void;
   aiReady: boolean;
   optimizeAiReady: boolean;
-  optimizeResume: (input: { resumeContent: ResumeContent }) => Promise<{
+  optimizeResume: (input: {
+    resumeContent: ResumeContent;
+    diagnosis: ResumeDiagnosis;
+    selectedIssueIds: string[];
+    preferences: ResumeOptimizationPreference[];
+    additionalDirection: string;
+    locale: "zh-CN" | "en";
+  }) => Promise<{
     version: ResumeVersionCard;
     message?: string;
     optimization?: ResumeOptimizationMeta;
@@ -133,6 +145,7 @@ export function ResumeWorkbench({
   onDeleteVersion,
 }: ResumeWorkbenchProps) {
   const t = useTranslations("resumeWorkbench");
+  const locale = useLocale() === "en" ? "en" : "zh-CN";
   const libraryT = useTranslations("app.resumeLibrary");
   const templateT = useTranslations("app.resumeLibrary.templates");
   const savedStatus = t("status.saved");
@@ -150,6 +163,8 @@ export function ResumeWorkbench({
   const [showThemePanel, setShowThemePanel] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<ResumeExportFormat | null>(null);
+  const [diagnosisDialogOpen, setDiagnosisDialogOpen] = useState(false);
+  const [diagnosisResume, setDiagnosisResume] = useState<ResumeContent>(initialVersion?.content ?? resume);
   const [applicationMessageDialogOpen, setApplicationMessageDialogOpen] = useState(false);
   const [applicationMessageResume, setApplicationMessageResume] = useState<ResumeContent>(initialVersion?.content ?? resume);
   const [search, setSearch] = useState("");
@@ -478,7 +493,7 @@ export function ResumeWorkbench({
     onOpenSettings();
   }
 
-  async function handleOptimizeResume() {
+  function openResumeDiagnosisDialog() {
     if (isOptimizingResume) return;
     if (!optimizeAiReady) {
       setOptimizeAiSetupDialogOpen(true);
@@ -490,14 +505,29 @@ export function ResumeWorkbench({
     const liveResume: Resume = { ...state.currentResume, sections: state.sections };
     const content = jadeResumeToContent(liveResume);
     const resolvedTitle = resolveResumeTitle(content, editingTitle);
-    const contentWithTitle = withResumeDisplayName(content, resolvedTitle);
+    setDiagnosisResume(withResumeDisplayName(content, resolvedTitle));
+    setDiagnosisDialogOpen(true);
+  }
 
+  async function handleDiagnosisOptimization(input: {
+    diagnosis: ResumeDiagnosis;
+    selectedIssueIds: string[];
+    preferences: ResumeOptimizationPreference[];
+    additionalDirection: string;
+  }) {
     setIsOptimizingResume(true);
     setStatus(t("status.optimizing"));
     try {
-      const result = await optimizeResume({ resumeContent: contentWithTitle });
+      const result = await optimizeResume({
+        resumeContent: diagnosisResume,
+        diagnosis: input.diagnosis,
+        selectedIssueIds: input.selectedIssueIds,
+        preferences: input.preferences,
+        additionalDirection: input.additionalDirection,
+        locale,
+      });
       onResumeOptimized({
-        before: contentWithTitle,
+        before: diagnosisResume,
         after: result.version.content,
         version: result.version,
         message: result.message,
@@ -506,6 +536,7 @@ export function ResumeWorkbench({
       setStatus(result.message ?? t("status.optimizeDone"));
     } catch (error) {
       setStatus(t("status.optimizeFailed", { message: error instanceof Error ? error.message : t("status.retryLater") }));
+      throw error;
     } finally {
       setIsOptimizingResume(false);
     }
@@ -677,7 +708,7 @@ export function ResumeWorkbench({
               label={isOptimizingResume ? t("toolbar.optimizing") : t("toolbar.optimize")}
               showText
               disabled={isOptimizingResume || isSaving}
-              onClick={() => void handleOptimizeResume()}
+              onClick={openResumeDiagnosisDialog}
             />
             <ToolbarButton
               icon={Copy}
@@ -729,6 +760,14 @@ export function ResumeWorkbench({
           onOpenChange={setExportDialogOpen}
           onExport={handleExport}
         />
+        {diagnosisDialogOpen ? (
+          <ResumeDiagnosisDialog
+            open
+            resume={diagnosisResume}
+            onOpenChange={setDiagnosisDialogOpen}
+            onOptimize={handleDiagnosisOptimization}
+          />
+        ) : null}
         {applicationMessageDialogOpen ? (
           <ApplicationMessageDialog
             open

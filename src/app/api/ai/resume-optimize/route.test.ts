@@ -63,7 +63,14 @@ describe("resume AI optimization route", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(mocks.optimizeResumeWithAI).toHaveBeenCalledWith({ resume: baseResume });
+    expect(mocks.optimizeResumeWithAI).toHaveBeenCalledWith({
+      resume: baseResume,
+      diagnosis: undefined,
+      selectedIssueIds: undefined,
+      preferences: undefined,
+      additionalDirection: undefined,
+      locale: undefined,
+    });
     expect(mocks.createResumeVersion).toHaveBeenCalledWith({
       name: "AI优化-陈同学的简历",
       summary: "AI 自动优化生成的简历版本，请在编辑器中复核后使用。",
@@ -79,6 +86,59 @@ describe("resume AI optimization route", () => {
       },
     });
     expect(body.version).toEqual({ id: "version-1", content: optimizedResume });
+  });
+
+  it("passes the selected diagnosis and optimization preferences to AI", async () => {
+    const diagnosis = {
+      summary: "需要加强成果表达。",
+      strengths: [],
+      issues: [{
+        id: "issue-1",
+        section: "projects",
+        location: "项目经历",
+        severity: "high",
+        category: "action-result",
+        title: "结果不清楚",
+        evidence: "参与需求分析",
+        explanation: "没有说明行动带来的结果。",
+        suggestion: "使用已有事实补充行动与结果。",
+      }],
+    };
+    mocks.optimizeResumeWithAI.mockResolvedValue({
+      source: "ai",
+      message: "简历优化完成",
+      data: baseResume,
+    });
+    mocks.createResumeVersion.mockResolvedValue({ id: "version-2", content: baseResume });
+
+    const response = await POST(jsonRequest({
+      resumeContent: baseResume,
+      diagnosis,
+      selectedIssueIds: ["issue-1"],
+      preferences: ["impact", "concise"],
+      additionalDirection: "GPA 写法无需调整，优先优化项目经历。",
+      locale: "zh-CN",
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.optimizeResumeWithAI).toHaveBeenCalledWith({
+      resume: baseResume,
+      diagnosis,
+      selectedIssueIds: ["issue-1"],
+      preferences: ["impact", "concise"],
+      additionalDirection: "GPA 写法无需调整，优先优化项目经历。",
+      locale: "zh-CN",
+    });
+  });
+
+  it("rejects an oversized additional direction", async () => {
+    const response = await POST(jsonRequest({
+      resumeContent: baseResume,
+      additionalDirection: "a".repeat(1_001),
+    }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.optimizeResumeWithAI).not.toHaveBeenCalled();
   });
 
   it("warms the route without calling the model", async () => {

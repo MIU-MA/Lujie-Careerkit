@@ -10,6 +10,10 @@ import { hasResumeContent } from "@/lib/resume-library";
 import { buildResumeDisplayName } from "@/lib/resume-naming";
 import type { RedactedAiSettings } from "@/lib/ai/settings";
 import { aiReadinessMessage, isAiReady, isResumeImportAiReady } from "@/lib/ai/readiness";
+import type {
+  ResumeDiagnosis,
+  ResumeOptimizationPreference,
+} from "@/lib/ai/resume-diagnosis";
 import type { ApplicationStatus, JobAnalysis, ResumeContent, ResumeOptimizationMeta } from "@/lib/types";
 import type { InterviewSessionRecord } from "@/lib/interview-service";
 import type { InterviewPreparationRecord } from "@/lib/interview-preparation";
@@ -45,6 +49,14 @@ import {
 import type { ApplicationView, InitialData, JobView, ResumeVersionView } from "@/components/app/types";
 
 type ResumeMode = "library" | "editor";
+type ResumeOptimizationRequest = {
+  resumeContent: ResumeContent;
+  diagnosis: ResumeDiagnosis;
+  selectedIssueIds: string[];
+  preferences: ResumeOptimizationPreference[];
+  additionalDirection: string;
+  locale: "zh-CN" | "en";
+};
 type ResumeOptimizationResponse = { version: ResumeVersionView; message?: string; optimization?: ResumeOptimizationMeta };
 type ResumeOptimizationView = {
   before: ResumeContent;
@@ -162,7 +174,11 @@ export function CareerKitApp({
     if (active === "match") {
       void warmAiRoutes([AI_ROUTE_WARMUP_PATHS.jobCreate, AI_ROUTE_WARMUP_PATHS.match]);
     } else if (active === "resume") {
-      void warmAiRoutes([AI_ROUTE_WARMUP_PATHS.optimize, AI_ROUTE_WARMUP_PATHS.applicationMessage]);
+      void warmAiRoutes([
+        AI_ROUTE_WARMUP_PATHS.analyze,
+        AI_ROUTE_WARMUP_PATHS.optimize,
+        AI_ROUTE_WARMUP_PATHS.applicationMessage,
+      ]);
     } else if (active === "interview") {
       void warmAiRoutes([AI_ROUTE_WARMUP_PATHS.interview]);
     }
@@ -606,7 +622,7 @@ export function CareerKitApp({
     };
   }
 
-  async function runResumeOptimization(input: { resumeContent: ResumeContent }): Promise<ResumeOptimizationResponse> {
+  async function runResumeOptimization(input: ResumeOptimizationRequest): Promise<ResumeOptimizationResponse> {
     if (!isAiReady(aiSettings)) throw new Error(aiReadinessMessage(aiSettings));
 
     const result = (await postJson("/api/ai/resume-optimize", input)) as {

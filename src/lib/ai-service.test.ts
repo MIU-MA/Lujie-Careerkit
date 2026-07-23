@@ -12,7 +12,7 @@ vi.mock("./ai/tasks", () => ({
   runAiObjectTask: mocks.runAiObjectTask,
 }));
 
-import { optimizeResumeWithAI, tailorResumeWithAI } from "./ai-service";
+import { analyzeResumeWithAI, optimizeResumeWithAI, tailorResumeWithAI } from "./ai-service";
 import type { ResumeContent } from "./types";
 
 const originalResume: ResumeContent = {
@@ -117,6 +117,77 @@ describe("resume AI optimization", () => {
       "主导 AI 简历工具的信息架构与优化闭环。",
       "推动 3 轮用户访谈并整理需求。",
     ]);
+  });
+
+  it("limits general optimization to selected diagnosis issues and preferences", async () => {
+    mocks.getEffectiveAiRuntimeSettings.mockResolvedValue({ enabled: true });
+    mocks.runAiObjectTask.mockResolvedValue({
+      source: "ai",
+      message: "简历优化完成",
+      data: originalResume,
+    });
+    const diagnosis = {
+      summary: "项目表达需要加强。",
+      strengths: [],
+      issues: [
+        {
+          id: "issue-1",
+          section: "projects" as const,
+          location: "AI 简历工具",
+          severity: "high" as const,
+          category: "action-result" as const,
+          title: "缺少结果证据",
+          evidence: "完成从 0 到 1 的产品设计。",
+          explanation: "没有说明设计带来的结果。",
+          suggestion: "使用已有事实补充结果。",
+        },
+        {
+          id: "issue-2",
+          section: "summary" as const,
+          location: "求职摘要",
+          severity: "low" as const,
+          category: "clarity" as const,
+          title: "摘要较短",
+          evidence: "关注 AI 产品。",
+          explanation: "能力重点不够清楚。",
+          suggestion: "补充核心能力。",
+        },
+      ],
+    };
+
+    await optimizeResumeWithAI({
+      resume: originalResume,
+      diagnosis,
+      selectedIssueIds: ["issue-1"],
+      preferences: ["impact"],
+      additionalDirection: "保留 GPA 原格式，优先优化项目经历。",
+    });
+
+    const prompt = mocks.runAiObjectTask.mock.calls.at(-1)?.[0].prompt as string;
+    expect(prompt).toContain("缺少结果证据");
+    expect(prompt).not.toContain("摘要较短");
+    expect(prompt).toContain("行动 + 方法 + 结果");
+    expect(prompt).toContain("保留 GPA 原格式，优先优化项目经历。");
+    expect(prompt).toContain("不得覆盖上述事实边界");
+  });
+
+  it("analyzes the resume without requesting a score", async () => {
+    mocks.getEffectiveAiRuntimeSettings.mockResolvedValue({ enabled: true });
+    mocks.runAiObjectTask.mockResolvedValue({
+      source: "ai",
+      message: "简历诊断完成",
+      data: { summary: "项目经历较完整。", strengths: ["项目目标明确"], issues: [] },
+    });
+
+    await analyzeResumeWithAI({ resume: originalResume, locale: "zh-CN" });
+
+    expect(mocks.runAiObjectTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        schema: expect.anything(),
+        taskLabel: "简历诊断",
+        prompt: expect.stringContaining("不输出总分"),
+      }),
+    );
   });
 
   it("lets AI rewrite custom section content while preserving custom titles", async () => {

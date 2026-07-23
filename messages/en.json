@@ -659,7 +659,7 @@
       "undo": "Undo",
       "redo": "Redo",
       "optimizing": "Optimizing...",
-      "optimize": "AI optimize resume",
+      "optimize": "Analyze resume",
       "applicationMessage": "Cover letter",
       "export": "Export",
       "closeTheme": "Close theme",
@@ -691,6 +691,61 @@
           "subtitle": "High-resolution paged images"
         }
       }
+    },
+    "diagnosisDialog": {
+      "title": "AI resume analysis",
+      "description": "Analyze the current resume first, then choose which issues to address and how. Analysis never changes the original resume.",
+      "analyzing": "Analyzing resume...",
+      "analyzingHint": "Checking action and results, factual evidence, clarity, and structure without a mechanical STAR score.",
+      "startHint": "Analysis only reads the sanitized current resume and never changes or overwrites it.",
+      "analysisDone": "Resume analysis complete.",
+      "analysisFailed": "Resume analysis failed. Try again later.",
+      "summary": "Analysis overview",
+      "issuesTitle": "Issues to improve",
+      "issuesHint": "Higher-priority issues are selected by default. Adjust the selection as needed.",
+      "selectedCount": "{count} selected",
+      "noIssues": "No clear high-priority issues were found. Close this dialog to keep using the original resume.",
+      "severity": {
+        "high": "High priority",
+        "medium": "Recommended",
+        "low": "Optional"
+      },
+      "groupCount": "{count} total, {selected} selected",
+      "evidence": "Resume text: {evidence}",
+      "suggestion": "Suggestion: {suggestion}",
+      "preferencesTitle": "How to optimize",
+      "preferencesHint": "Optimization only addresses selected issues and always preserves the resume's facts.",
+      "preferences": {
+        "clarity": {
+          "title": "Improve clarity",
+          "description": "Make personal actions and ownership explicit."
+        },
+        "impact": {
+          "title": "Highlight action and results",
+          "description": "Strengthen action-method-result using existing evidence."
+        },
+        "concise": {
+          "title": "Be more concise",
+          "description": "Remove repetition while preserving important evidence."
+        },
+        "ats": {
+          "title": "ATS friendly",
+          "description": "Use conventional wording and supported skill terms."
+        }
+      },
+      "additionalDirection": {
+        "label": "Additional direction",
+        "optional": "Optional",
+        "placeholder": "For example: keep the GPA format required by my school; prioritize project experience and keep the tone restrained.",
+        "hint": "Use this to correct the analysis or add priorities. It cannot introduce experience, skills, or metrics missing from the resume."
+      },
+      "optimizing": "Generating an optimized version from your choices...",
+      "optimizationFailed": "Optimization failed. Try again later.",
+      "close": "Not now",
+      "startAnalysis": "Start analysis",
+      "reanalyze": "Analyze again",
+      "optimizeSelected": "Optimize {count} selected",
+      "optimizingButton": "Optimizing..."
     },
     "applicationMessageDialog": {
       "title": "Cover letter and greeting",

@@ -1,6 +1,7 @@
 export const AI_ROUTE_WARMUP_PATHS = {
   jobCreate: "/api/jobs",
   match: "/api/ai/resume-tailor",
+  analyze: "/api/ai/resume-analyze",
   optimize: "/api/ai/resume-optimize",
   applicationMessage: "/api/ai/application-message",
   interview: "/api/interviews",
