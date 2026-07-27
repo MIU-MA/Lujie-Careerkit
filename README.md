@@ -49,7 +49,7 @@ Try the live preview at [https://lujie.chozzc.dev](https://lujie.chozzc.dev).
 ## Highlights
 
 - **Structured resume editing**: maintain multiple resume versions, create an independent copy of any resume for experimental edits, edit education, internship, project, skill, and custom sections, switch templates and themes, and export PDF, PNG, or editable DOCX files.
-- **AI resume optimization**: generate a general AI-optimized resume version from the editor, compare before and after, and keep refining it with the same templates.
+- **AI resume analysis**: diagnose action-result structure, evidence, clarity, and organization first; let the user choose which issues and directions to address; then create an independent optimized version while preserving the original.
 - **Cover letters and recruiter greetings**: combine the current resume, a complete JD, and user-provided availability details to generate a formal cover letter or a concise recruiter-chat opener, then edit, copy, or regenerate the result.
 - **JD matching**: paste a complete JD with the company, full role title, requirements, and responsibilities, then let AI diagnose evidence, reorder emphasis, improve wording, and save a role-specific version without inventing experience.
 - **Role-specific interview prep**: combine a selected resume with a complete JD to generate and save a guide with an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan.
@@ -85,7 +85,7 @@ Open [http://localhost:3000](http://localhost:3000). SQLite data is stored in th
 
 `LUJIE_SETTINGS_SECRET` encrypts locally saved settings secrets. Replace the example value with a long random string.
 
-Use `latest` to follow the newest `main` build. After v0.2.2 is published, use `v0.2.2` to pin that release.
+Use `latest` to follow the newest `main` build. After v0.2.3 is published, use `v0.2.3` to pin that release.
 
 ### Local Development
 
@@ -139,6 +139,20 @@ AI features stay disabled until the settings are saved and the connection test s
 
 ## Release Notes
 
+### v0.2.3
+
+#### AI resume analysis
+
+- Renamed the resume-editor action from “AI Optimize Resume” to “Analyze resume.” AI first reads the sanitized current editor content and returns a diagnosis overview, existing strengths, and concrete issues without modifying or replacing the original resume.
+- STAR is used only as a diagnostic aid to check whether actions, methods, and results are clear. The analysis does not produce a mechanical overall score or fake STAR completion rate, and returns at most 12 issues tied to a resume section and source evidence.
+- Issues are grouped into collapsible “Address first,” “Recommended,” and “Optional improvement” sections. Important issues are selected by default, while users can inspect the reason and suggestion before changing the selection.
+
+#### User-controlled optimization
+
+- Users can choose clarity, impact, concision, or ATS readability and add optional instructions to correct the diagnosis, limit the scope, or specify the desired tone.
+- AI changes only the selected issues and cannot expand the scope on its own, invent experience, skills, metrics, or results, or treat missing resume evidence as proof that the candidate lacks a capability.
+- Confirmation creates an independent optimized version while preserving the original. Diagnosis controls are locked during generation, and both analysis and optimization validate request input, sanitized snapshots, and structured model output.
+
 ### v0.2.2
 
 #### Cover letters and recruiter greetings
@@ -158,30 +172,11 @@ AI features stay disabled until the settings are saved and the connection test s
 
 - Create an independent copy from the resume library or editor and continue editing it immediately. The original stays unchanged, and the new copy does not inherit application, job, or interview links.
 - Copies preserve all resume content, sections, templates, and themes. Repeated copies are named “Copy”, “Copy 2”, and so on to avoid ambiguity.
-- Copies created from AI-optimized resumes retain all optimized content while removing internal optimization snapshots and job links, making them ordinary, independently maintained resume versions.
+- Copies created from resumes optimized after AI analysis retain all optimized content while removing internal optimization snapshots and job links, making them ordinary, independently maintained resume versions.
 
 #### Resume stability
 
 - Fixed skill categories being merged or duplicated after saving, reopening, or reordering the flattened skill list.
-
-### v0.2.0
-
-#### Interview preparation workflow
-
-- Added saved, role-specific interview prep guides generated from a complete JD and selected resume, covering an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan.
-- Added a capability radar chart, guide navigation, structured sections, per-resume history, and a direct path from a saved guide into mock interviews and AI review.
-- Company and role names are now identified by AI from the complete JD, preserving internship or campus-recruiting qualifiers, role directions, and parenthetical details instead of relying on the first-line format.
-
-#### Resume and JD workflows
-
-- Fixed resume import and optimization integrity: work, internship, and project entries stay separate; personal summaries and self-reviews remain separate; deleted sections are not restored by later operations.
-- AI requests now remove contact details, logos, editor settings, and internal base snapshots before sending resume context to a model.
-
-#### Data and stability
-
-- Existing SQLite databases automatically receive the interview preparation table and missing fields without overwriting saved resumes, applications, interviews, or settings.
-- Fixed invalid resume snapshot fallback, optimized-version deduplication, and related workflow consistency issues.
-- Aligned the Control Center route and project repository entry.
 
 ## FAQ
 
