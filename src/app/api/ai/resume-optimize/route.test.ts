@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   optimizeResumeWithAI: vi.fn(),
-  createResumeVersion: vi.fn(),
   getTailoringBaseResume: vi.fn(),
 }));
 
@@ -10,7 +9,6 @@ vi.mock("@/lib/ai-service", () => ({
   optimizeResumeWithAI: mocks.optimizeResumeWithAI,
 }));
 vi.mock("@/lib/repository", () => ({
-  createResumeVersion: mocks.createResumeVersion,
   getTailoringBaseResume: mocks.getTailoringBaseResume,
 }));
 
@@ -34,7 +32,7 @@ describe("resume AI optimization route", () => {
     mocks.getTailoringBaseResume.mockResolvedValue(baseResume);
   });
 
-  it("does not create a resume version when AI falls back", async () => {
+  it("returns an error when AI falls back", async () => {
     mocks.optimizeResumeWithAI.mockResolvedValue({
       source: "fallback",
       message: "缺少 API Key",
@@ -44,10 +42,9 @@ describe("resume AI optimization route", () => {
     const response = await POST(jsonRequest({ resumeContent: baseResume }));
 
     expect(response.status).toBe(503);
-    expect(mocks.createResumeVersion).not.toHaveBeenCalled();
   });
 
-  it("creates a new AI optimized resume version when AI succeeds", async () => {
+  it("returns a review draft without creating a resume version when AI succeeds", async () => {
     const optimizedResume = {
       ...baseResume,
       profile: { ...baseResume.profile, summary: "具备 AI 产品规划与 Prompt 迭代经验。" },
@@ -57,7 +54,6 @@ describe("resume AI optimization route", () => {
       message: "简历优化完成",
       data: optimizedResume,
     });
-    mocks.createResumeVersion.mockResolvedValue({ id: "version-1", content: optimizedResume });
 
     const response = await POST(jsonRequest({ resumeContent: baseResume }));
     const body = await response.json();
@@ -71,12 +67,9 @@ describe("resume AI optimization route", () => {
       additionalDirection: undefined,
       locale: undefined,
     });
-    expect(mocks.createResumeVersion).toHaveBeenCalledWith({
-      name: "AI优化-陈同学的简历",
-      summary: "AI 自动优化生成的简历版本，请在编辑器中复核后使用。",
-      content: optimizedResume,
-      baseResume,
-      optimizationMeta: {
+    expect(body).toEqual({
+      draft: optimizedResume,
+      optimization: {
         company: "",
         title: "",
         keywords: [],
@@ -84,8 +77,9 @@ describe("resume AI optimization route", () => {
         changes: [],
         versionName: "",
       },
+      source: "ai",
+      message: "简历优化完成",
     });
-    expect(body.version).toEqual({ id: "version-1", content: optimizedResume });
   });
 
   it("passes the selected diagnosis and optimization preferences to AI", async () => {
@@ -109,13 +103,11 @@ describe("resume AI optimization route", () => {
       message: "简历优化完成",
       data: baseResume,
     });
-    mocks.createResumeVersion.mockResolvedValue({ id: "version-2", content: baseResume });
 
     const response = await POST(jsonRequest({
       resumeContent: baseResume,
       diagnosis,
       selectedIssueIds: ["issue-1"],
-      preferences: ["impact", "concise"],
       additionalDirection: "GPA 写法无需调整，优先优化项目经历。",
       locale: "zh-CN",
     }));
@@ -125,7 +117,6 @@ describe("resume AI optimization route", () => {
       resume: baseResume,
       diagnosis,
       selectedIssueIds: ["issue-1"],
-      preferences: ["impact", "concise"],
       additionalDirection: "GPA 写法无需调整，优先优化项目经历。",
       locale: "zh-CN",
     });
@@ -141,13 +132,40 @@ describe("resume AI optimization route", () => {
     expect(mocks.optimizeResumeWithAI).not.toHaveBeenCalled();
   });
 
+  it("rejects automatic optimization for an issue requiring user confirmation", async () => {
+    const diagnosis = {
+      summary: "GPA 写法需要核实。",
+      strengths: [],
+      issues: [{
+        id: "issue-1",
+        section: "education",
+        location: "教育背景",
+        severity: "high",
+        action: "user-confirm",
+        category: "clarity",
+        title: "GPA 格式有误",
+        evidence: "GPA 8/4.0",
+        explanation: "分子大于满分。",
+        suggestion: "请确认实际 GPA 和满分制式。",
+      }],
+    };
+
+    const response = await POST(jsonRequest({
+      resumeContent: baseResume,
+      diagnosis,
+      selectedIssueIds: ["issue-1"],
+    }));
+
+    expect(response.status).toBe(400);
+    expect(mocks.optimizeResumeWithAI).not.toHaveBeenCalled();
+  });
+
   it("warms the route without calling the model", async () => {
     const response = await GET();
 
     expect(response.status).toBe(204);
     expect(mocks.getTailoringBaseResume).not.toHaveBeenCalled();
     expect(mocks.optimizeResumeWithAI).not.toHaveBeenCalled();
-    expect(mocks.createResumeVersion).not.toHaveBeenCalled();
   });
 });
 

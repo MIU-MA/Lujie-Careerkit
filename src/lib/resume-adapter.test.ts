@@ -204,6 +204,18 @@ describe("resume content adapter", () => {
     expect(work.items[0].highlights).toEqual(["围绕 JD 强化后的经历表述。"]);
   });
 
+  it("recovers decimal text already damaged by the legacy list-prefix cleanup", () => {
+    const savedContent = jadeResumeToContent(contentToJadeResume(baseResume));
+    savedContent.education[0].highlights = ["GPA 8/4.0"];
+
+    const reopened = contentToJadeResume(savedContent);
+    const education = reopened.sections.find((section) => section.type === "education")?.content as {
+      items: Array<{ highlights: string[] }>;
+    };
+
+    expect(education.items[0].highlights).toEqual(["GPA 3.8/4.0"]);
+  });
+
   it("keeps work and project logos through the editor round-trip", () => {
     const logo = "data:image/png;base64,logo";
     const content = jadeResumeToContent(contentToJadeResume({
@@ -256,6 +268,27 @@ describe("resume content adapter", () => {
     ]);
   });
 
+  it("applies skill ordering changes inside existing categories", () => {
+    const jadeResume = contentToJadeResume({ ...baseResume, skills: ["TypeScript", "React", "Git"] });
+    const skills = jadeResume.sections.find((section) => section.type === "skills")!;
+    skills.content = {
+      categories: [
+        { id: "frontend", name: "前端", skills: ["TypeScript", "React"] },
+        { id: "tools", name: "工具", skills: ["Git"] },
+      ],
+    } satisfies SkillsContent;
+    const savedContent = jadeResumeToContent(jadeResume);
+    savedContent.skills = ["React", "TypeScript", "Git"];
+
+    const reopened = contentToJadeResume(savedContent);
+    const reopenedSkills = reopened.sections.find((section) => section.type === "skills")?.content as SkillsContent;
+
+    expect(reopenedSkills.categories).toEqual([
+      { id: "frontend", name: "前端", skills: ["React", "TypeScript"] },
+      { id: "tools", name: "工具", skills: ["Git"] },
+    ]);
+  });
+
   it("maps imported custom titled sections into editor custom modules", () => {
     const jadeResume = contentToJadeResume({
       ...baseResume,
@@ -285,6 +318,24 @@ describe("resume content adapter", () => {
         content: "AIGC full-stack creator\nTechnical art workflow",
       },
     ]);
+  });
+
+  it("applies newer custom-section content over a stale editor snapshot", () => {
+    const savedContent = jadeResumeToContent(contentToJadeResume({
+      ...baseResume,
+      customSections: [{ title: "主要优势", content: "熟悉 Python。" }],
+    }));
+    savedContent.customSections = [{ title: "主要优势", content: "熟悉 Python，并具备 AI 项目落地经验。" }];
+
+    const reopened = contentToJadeResume(savedContent);
+    const custom = reopened.sections.find((section) => section.type === "custom");
+
+    expect(jadeResumeToContent(reopened).customSections).toEqual([
+      { title: "主要优势", content: "熟悉 Python，并具备 AI 项目落地经验。" },
+    ]);
+    expect(custom?.content).toMatchObject({
+      items: [expect.objectContaining({ description: "熟悉 Python，并具备 AI 项目落地经验。" })],
+    });
   });
 
   it("keeps template and theme settings attached to the individual resume content", () => {

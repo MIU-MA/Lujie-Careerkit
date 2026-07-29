@@ -9,9 +9,12 @@ import {
   CheckCircle2,
   CircleAlert,
   ClipboardCheck,
+  Download,
+  FileText,
   ListChecks,
   LoaderCircle,
   MessagesSquare,
+  Printer,
   RefreshCw,
   Sparkles,
   Target,
@@ -38,6 +41,12 @@ import { SpeechTextarea } from "@/components/shared/speech-textarea";
 import { WorkflowStepper } from "@/components/shared/workflow-stepper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import {
   createInterviewRetryInput,
@@ -48,6 +57,11 @@ import {
   type InterviewReport,
 } from "@/lib/interview";
 import type { InterviewPreparation, InterviewPreparationRecord } from "@/lib/interview-preparation";
+import {
+  exportInterviewPreparationDocx,
+  printInterviewPreparation,
+  type InterviewPreparationExportLabels,
+} from "@/lib/interview-preparation-export";
 import type { InterviewSessionRecord } from "@/lib/interview-service";
 import { buildUploadedResumeDraft, isResumeContentLike, type UploadedResumeDraft } from "@/lib/resume-upload";
 import type { ResumeContent } from "@/lib/types";
@@ -763,6 +777,8 @@ function PreparationScreen({
 }) {
   const t = useTranslations("interview");
   const [activeSection, setActiveSection] = useState<(typeof PREPARATION_SECTION_IDS)[number]>(PREPARATION_SECTION_IDS[0]);
+  const [exportingFormat, setExportingFormat] = useState<"docx" | "pdf" | null>(null);
+  const [exportMessage, setExportMessage] = useState("");
 
   useEffect(() => {
     const updateActiveSection = () => {
@@ -822,6 +838,63 @@ function PreparationScreen({
     ["prep-questions", t("preparation.sections.questions")],
     ["prep-plan", t("preparation.sections.plan")],
   ] as const;
+  const exportLabels: InterviewPreparationExportLabels = {
+    documentTitle: t("preparation.badge"),
+    basedOn: t("preparation.basedOn", { resumeName }),
+    roleFamily: t("preparation.export.roleFamily"),
+    assumptions: t("preparation.export.assumptions"),
+    sections: {
+      overview: t("preparation.sections.overview"),
+      capability: t("preparation.sections.capability"),
+      evidence: t("preparation.sections.evidence"),
+      knowledge: t("preparation.sections.knowledge"),
+      deepDives: t("preparation.sections.deepDives"),
+      questions: t("preparation.sections.questions"),
+      plan: t("preparation.sections.plan"),
+    },
+    requirementLevel: t("preparation.export.requirementLevel"),
+    evidenceLevel: t("preparation.export.evidenceLevel"),
+    nextStep: t("preparation.nextStep"),
+    resumeEvidence: t("preparation.resumeEvidence"),
+    action: t("preparation.action"),
+    explanation: t("preparation.explanation"),
+    currentEvidence: t("preparation.currentEvidence"),
+    targetLevel: t("preparation.targetLevel"),
+    selfCheck: t("preparation.selfCheck"),
+    contribution: t("preparation.contribution"),
+    followUps: t("preparation.followUps"),
+    factsToConfirm: t("preparation.factsToConfirm"),
+    category: t("preparation.export.category"),
+    preparationDirection: t("preparation.export.preparationDirection"),
+    introduction: t("preparation.introductionTitle"),
+    reverseQuestions: t("preparation.reverseQuestionsTitle"),
+    stateLabels,
+    priorityLabels,
+    requirementLabels,
+    evidenceLabels,
+  };
+
+  async function handleExport(format: "docx" | "pdf") {
+    setExportingFormat(format);
+    setExportMessage("");
+    try {
+      if (format === "docx") {
+        await exportInterviewPreparationDocx(preparation, exportLabels);
+        setExportMessage(t("preparation.export.downloaded"));
+      } else {
+        printInterviewPreparation(preparation, exportLabels);
+        setExportMessage(t("preparation.export.printOpened"));
+      }
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error && error.message === "PRINT_WINDOW_BLOCKED"
+          ? t("preparation.export.popupBlocked")
+          : t("preparation.export.failed"),
+      );
+    } finally {
+      setExportingFormat(null);
+    }
+  }
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
@@ -1012,9 +1085,33 @@ function PreparationScreen({
         </section>
 
         <section className="flex flex-col justify-between gap-4 rounded-lg border border-line bg-surface p-5 sm:flex-row sm:items-center">
-          <p className="text-sm text-muted-foreground">{message || t("preparation.footerHint")}</p>
-          <div className="flex gap-2">
+          <p className="text-sm text-muted-foreground">{exportMessage || message || t("preparation.footerHint")}</p>
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" disabled={isWorking} onClick={onBack}><ArrowLeft data-icon="inline-start" />{t("preparation.back")}</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" disabled={isWorking || Boolean(exportingFormat)} />}
+              >
+                {exportingFormat ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <Download data-icon="inline-start" />}
+                {t("preparation.export.button")}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => void handleExport("docx")}>
+                  <FileText />
+                  <span>
+                    <span className="block font-medium">{t("preparation.export.docx")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("preparation.export.docxHint")}</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void handleExport("pdf")}>
+                  <Printer />
+                  <span>
+                    <span className="block font-medium">{t("preparation.export.pdf")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("preparation.export.pdfHint")}</span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button disabled={isWorking} onClick={onStart}>
               {isWorking ? <LoaderCircle data-icon="inline-start" className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
               {t("preparation.start")}

@@ -4,6 +4,7 @@ export function buildAiResumeSnapshot(resume: unknown) {
   delete safeResume.editor;
   delete safeResume._tailoringBaseResume;
   delete safeResume._optimizationMeta;
+  delete safeResume._optimizationStages;
   for (const key of ["experiences", "internships", "projects"]) {
     const items = safeResume[key];
     if (Array.isArray(items)) safeResume[key] = items.map(withoutLogo);

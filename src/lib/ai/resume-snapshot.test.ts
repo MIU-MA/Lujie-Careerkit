@@ -18,6 +18,10 @@ describe("AI resume snapshot", () => {
         basics: { email: "base@example.com", phone: "13900000000" },
       },
       _optimizationMeta: { summary: "内部优化记录" },
+      _optimizationStages: {
+        analysis: { suggestions: ["内部阶段记录"] },
+        draft: { basics: { email: "stage@example.com" } },
+      },
     });
 
     expect(snapshot).toMatchObject({
@@ -29,6 +33,8 @@ describe("AI resume snapshot", () => {
     expect(JSON.stringify(snapshot)).not.toContain("base@example.com");
     expect(JSON.stringify(snapshot)).not.toContain("13900000000");
     expect(JSON.stringify(snapshot)).not.toContain("内部优化记录");
+    expect(JSON.stringify(snapshot)).not.toContain("内部阶段记录");
+    expect(JSON.stringify(snapshot)).not.toContain("stage@example.com");
     expect(JSON.stringify(snapshot)).not.toContain("template");
   });
 

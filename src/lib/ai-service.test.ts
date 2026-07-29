@@ -119,7 +119,30 @@ describe("resume AI optimization", () => {
     ]);
   });
 
-  it("limits general optimization to selected diagnosis issues and preferences", async () => {
+  it("does not create a personal summary when self-review already provides that content", async () => {
+    const resumeWithoutPersonalSummary: ResumeContent = {
+      ...originalResume,
+      profile: { ...originalResume.profile, summary: "" },
+      selfReview: "熟悉 AI 产品设计与 Prompt 迭代。",
+    };
+    mocks.getEffectiveAiRuntimeSettings.mockResolvedValue({ enabled: true });
+    mocks.runAiObjectTask.mockResolvedValue({
+      source: "ai",
+      message: "简历优化完成",
+      data: {
+        ...resumeWithoutPersonalSummary,
+        profile: { ...resumeWithoutPersonalSummary.profile, summary: "AI 新增的个人简介。" },
+        selfReview: "熟悉 AI 产品设计、Prompt 迭代与落地验证。",
+      },
+    });
+
+    const result = await optimizeResumeWithAI({ resume: resumeWithoutPersonalSummary });
+
+    expect(result.data.profile.summary).toBe("");
+    expect(result.data.selfReview).toBe("熟悉 AI 产品设计、Prompt 迭代与落地验证。");
+  });
+
+  it("limits general optimization to selected diagnosis issues and additional direction", async () => {
     mocks.getEffectiveAiRuntimeSettings.mockResolvedValue({ enabled: true });
     mocks.runAiObjectTask.mockResolvedValue({
       source: "ai",
@@ -152,21 +175,33 @@ describe("resume AI optimization", () => {
           explanation: "能力重点不够清楚。",
           suggestion: "补充核心能力。",
         },
+        {
+          id: "issue-3",
+          section: "education" as const,
+          location: "教育背景",
+          severity: "high" as const,
+          action: "user-confirm" as const,
+          category: "clarity" as const,
+          title: "GPA 格式有误",
+          evidence: "GPA 8/4.0",
+          explanation: "分子大于满分。",
+          suggestion: "请确认实际 GPA 和满分制式。",
+        },
       ],
     };
 
     await optimizeResumeWithAI({
       resume: originalResume,
       diagnosis,
-      selectedIssueIds: ["issue-1"],
-      preferences: ["impact"],
+      selectedIssueIds: ["issue-1", "issue-3"],
       additionalDirection: "保留 GPA 原格式，优先优化项目经历。",
     });
 
     const prompt = mocks.runAiObjectTask.mock.calls.at(-1)?.[0].prompt as string;
     expect(prompt).toContain("缺少结果证据");
     expect(prompt).not.toContain("摘要较短");
-    expect(prompt).toContain("行动 + 方法 + 结果");
+    expect(prompt).not.toContain("GPA 8/4.0");
+    expect(prompt).not.toContain("用户选择的优化方向");
     expect(prompt).toContain("保留 GPA 原格式，优先优化项目经历。");
     expect(prompt).toContain("不得覆盖上述事实边界");
   });
@@ -185,8 +220,13 @@ describe("resume AI optimization", () => {
       expect.objectContaining({
         schema: expect.anything(),
         taskLabel: "简历诊断",
-        prompt: expect.stringContaining("不输出总分"),
+        prompt: expect.stringMatching(/不输出总分[\s\S]+evidence 为空且必须由用户提供时才使用 user-input[\s\S]+不得诊断 profile\.summary 缺失[\s\S]+当前日期为 \d{4}-\d{2}-\d{2}[\s\S]+联系方式会在分析前因隐私保护被主动移除/),
       }),
+    );
+
+    await analyzeResumeWithAI({ resume: originalResume, locale: "en" });
+    expect(mocks.runAiObjectTask.mock.calls.at(-1)?.[0].prompt).toMatch(
+      /The current date is \d{4}-\d{2}-\d{2}[\s\S]+contact details are intentionally removed before analysis for privacy/,
     );
   });
 

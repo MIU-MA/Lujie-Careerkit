@@ -109,7 +109,7 @@ export function ResumeJdPreparation({
                 onValueChange={onJdChange}
                 placeholder={jdPlaceholder}
                 wrapperClassName="mt-2"
-                className="min-h-[210px] resize-y bg-surface-low px-4 py-4 text-sm leading-7"
+                className="resume-library-scroll h-[210px] min-h-[210px] field-sizing-fixed resize-y overflow-y-auto bg-surface-low px-4 py-4 text-sm leading-7"
               />
               <span className="mt-1 block text-right text-xs text-muted-foreground">{jdValue.length} / 8000</span>
             </label>

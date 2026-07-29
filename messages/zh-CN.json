@@ -114,7 +114,7 @@
     },
     "resumeLibrary": {
       "title": "我的简历",
-      "count": "共 {count} 份简历 · {optimizedCount} 份岗位优化版本",
+      "count": "共 {count} 份简历 · {jobOptimizedCount} 份岗位优化版本 · {generalOptimizedCount} 份通用优化版本",
       "importing": "解析中...",
       "import": "导入简历",
       "create": "新建简历",
@@ -130,7 +130,9 @@
       "deleteResume": "删除简历",
       "kind": {
         "original": "原简历",
-        "optimized": "优化后简历"
+        "optimized": "优化后简历",
+        "jobOptimized": "岗位优化简历",
+        "generalOptimized": "通用优化简历"
       },
       "template": {
         "label": "模板",
@@ -389,6 +391,23 @@
       "footerHint": "准备完成后可直接生成本轮题目；模拟阶段不会展示答案评分点。",
       "back": "调整素材",
       "start": "生成题目并开始",
+      "export": {
+        "button": "导出资料",
+        "docx": "Word 文档",
+        "docxHint": "可继续编辑的完整资料",
+        "pdf": "打印 / 保存为 PDF",
+        "pdfHint": "使用浏览器打印并另存为 PDF",
+        "downloaded": "Word 文档已下载。",
+        "printOpened": "打印窗口已打开，可选择“另存为 PDF”。",
+        "popupBlocked": "浏览器拦截了打印窗口，请允许弹出窗口后重试。",
+        "failed": "导出失败，请稍后重试。",
+        "roleFamily": "岗位方向",
+        "assumptions": "资料假设",
+        "requirementLevel": "要求级别",
+        "evidenceLevel": "证据水平",
+        "category": "问题类别",
+        "preparationDirection": "准备方向"
+      },
       "states": {
         "direct": "直接证据",
         "transferable": "可迁移经历",
@@ -701,8 +720,8 @@
       "analysisDone": "简历诊断完成。",
       "analysisFailed": "简历诊断失败，请稍后重试。",
       "summary": "诊断概览",
-      "issuesTitle": "可优化问题",
-      "issuesHint": "已默认选择较重要的问题，你可以取消或重新选择。",
+      "issuesTitle": "诊断问题",
+      "issuesHint": "可由 AI 安全改写的问题会默认选择；缺少的真实信息需要先补充，GPA、日期等硬事实矛盾需要先核实。",
       "selectedCount": "已选择 {count} 项",
       "noIssues": "当前没有发现需要优先处理的明显问题。你可以关闭窗口继续使用原简历。",
       "severity": {
@@ -713,6 +732,8 @@
       "groupCount": "共 {count} 项，已选择 {selected} 项",
       "evidence": "简历原文：{evidence}",
       "suggestion": "建议：{suggestion}",
+      "userSupplement": "需在编辑器补充",
+      "userConfirmation": "需在编辑器核实",
       "preferencesTitle": "怎样优化",
       "preferencesHint": "优化只会处理你勾选的问题，并始终保留原简历事实。",
       "preferences": {
@@ -733,12 +754,12 @@
           "description": "使用常规表达和已有事实支持的技能关键词。"
         }
       },
-      "additionalDirection": {
-        "label": "其他补充",
-        "optional": "可选",
-        "placeholder": "例如：GPA 写法是学校要求，请不要调整；优先优化项目经历，整体语气保持克制。",
-        "hint": "可以纠正诊断理解或补充优化重点，但不会用于编造简历中不存在的经历、技能或数据。"
-      },
+        "additionalDirection": {
+          "label": "告诉 AI 怎么改",
+          "optional": "可选",
+          "placeholder": "例如：保留有效建议，但不要调整 GPA；把项目经历写得更具体，把“协助”改成明确的个人行动，整体语气保持克制。",
+          "hint": "可以直接说明要改哪些内容、怎样表达，以及哪些建议不要采纳。AI 只处理你勾选的问题，并继续遵守不编造事实的边界。"
+        },
       "optimizing": "正在按你的选择生成优化版本...",
       "optimizationFailed": "优化失败，请稍后重试。",
       "close": "暂不优化",
@@ -830,7 +851,55 @@
     "before": "原简历",
     "after": "优化后",
     "afterSubtitle": "已生成优化后简历，可进入编辑器继续微调。",
-    "untitled": "未命名简历"
+    "untitled": "未命名简历",
+    "review": {
+      "draftReady": "AI 修改草稿已生成，请逐条审阅后保存。",
+      "saved": "已按你的选择保存为新的简历版本。",
+      "workflowAnalyze": "AI简历分析",
+      "workflowReview": "逐条审阅确认编辑",
+      "workflowSave": "保存AI优化简历",
+      "pageTitle": "逐条审阅 AI 修改",
+      "pageDescription": "你可以逐条采纳、取消或直接修改 AI 建议；保存后只更新这份通用优化版本，原简历不会改变。",
+      "title": "修改项审阅",
+      "description": "修改按简历模块折叠分组。取消采纳后，右侧预览会立即恢复该项原文。",
+      "acceptedCount": "已采纳 {accepted} / {total} 项",
+      "groupCount": "已采纳 {accepted} / {total} 项",
+      "acceptAll": "全部采纳",
+      "rejectAll": "全部取消",
+      "accepted": "采纳",
+      "rejected": "不采纳",
+      "original": "简历原文",
+      "suggestion": "AI 建议（可直接修改）",
+      "restore": "恢复 AI 建议",
+      "reason": "修改依据：",
+      "genericReason": "根据你选择的优化方向，提升表达清晰度和信息有效性。",
+      "itemField": "{field} · 第 {index} 项修改",
+      "cancel": "返回原简历",
+      "save": "保存AI优化简历",
+      "saving": "正在保存",
+      "versionSummary": "经逐条审阅后保存的 AI 优化简历版本。",
+      "saveFailed": "保存审阅结果失败，请稍后重试。",
+      "selectAtLeastOne": "请至少采纳一项修改；如果不需要这些修改，可以返回原简历。",
+      "noChanges": "AI 没有产生可见的文本修改，无需创建新版本。",
+      "sections": {
+        "summary": "个人总结与自我评价",
+        "education": "教育背景",
+        "experiences": "工作经历",
+        "internships": "实习经历",
+        "projects": "项目经历",
+        "skills": "技能特长",
+        "awards": "资格证书",
+        "customSections": "自定义模块"
+      },
+      "fields": {
+        "summary": "个人总结",
+        "selfReview": "自我评价",
+        "highlight": "经历要点",
+        "skills": "技能顺序与表述",
+        "awards": "证书与奖项",
+        "customContent": "模块正文"
+      }
+    }
   },
   "settings": {
     "languageTitle": "语言",

@@ -2,14 +2,26 @@
 
 import type { ReactNode } from "react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { FileText } from "lucide-react";
+import { ChevronDown, FileText, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { ZoomableResumeCanvas } from "@/components/preview/zoomable-resume-canvas";
 import { WorkflowStepper } from "@/components/shared/workflow-stepper";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import type { ResumeDiagnosisIssue } from "@/lib/ai/resume-diagnosis";
 import { contentToJadeResume } from "@/lib/resume-adapter";
 import { buildResumeDisplayName } from "@/lib/resume-naming";
+import {
+  applyResumeReviewChanges,
+  buildResumeReviewChanges,
+  resumeReviewChangeAddressesIssue,
+  type ResumeReviewChange,
+  type ResumeReviewSection,
+} from "@/lib/resume-review";
 import type { JobAnalysis, ResumeContent, ResumeOptimizationMeta } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export type ResumeDiffSection = {
   key: string;
@@ -29,6 +41,17 @@ type SummaryOptions = {
   meta?: ResumeOptimizationMeta;
 };
 
+type ResumeReviewOptions = {
+  issues: ResumeDiagnosisIssue[];
+  initialAcceptedIds?: string[];
+  initialEditedValues?: Record<string, string>;
+  onSave: (
+    content: ResumeContent,
+    state: { acceptedIds: string[]; editedValues: Record<string, string> },
+  ) => Promise<void>;
+  onCancel?: () => void;
+};
+
 export function ResumeOptimizationResult({
   workflowLabels,
   title,
@@ -40,6 +63,9 @@ export function ResumeOptimizationResult({
   onBack,
   openEditorLabel,
   onOpenEditor,
+  review,
+  currentStep,
+  onStepChange,
 }: {
   workflowLabels: string[];
   title: string;
@@ -50,14 +76,64 @@ export function ResumeOptimizationResult({
   backLabel?: string;
   onBack?: () => void;
   openEditorLabel?: string;
-  onOpenEditor: () => void;
+  onOpenEditor?: () => void;
+  review?: ResumeReviewOptions;
+  currentStep?: number;
+  onStepChange?: (index: number) => void;
 }) {
   const t = useTranslations("optimizationResult");
-  const diffSections = buildResumeDiffSections(before, after);
+  const reviewChanges = useMemo(() => buildResumeReviewChanges(before, after), [after, before]);
+  const [acceptedIds, setAcceptedIds] = useState(
+    () => new Set(review?.initialAcceptedIds ?? reviewChanges.map((change) => change.id)),
+  );
+  const [editedValues, setEditedValues] = useState<Record<string, string>>(
+    () => review?.initialEditedValues ?? {},
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const reviewedAfter = useMemo(
+    () => review
+      ? applyResumeReviewChanges(before, reviewChanges, acceptedIds, editedValues)
+      : after,
+    [acceptedIds, after, before, editedValues, review, reviewChanges],
+  );
+  const diffSections = buildResumeDiffSections(before, reviewedAfter);
+  const hasBlankAcceptedChange = reviewChanges.some(
+    (change) => acceptedIds.has(change.id) && !(editedValues[change.id] ?? change.after).trim(),
+  );
+  const canSaveReview = Boolean(review && acceptedIds.size && !hasBlankAcceptedChange && !isSaving);
+
+  function toggleReviewChange(changeId: string, checked: boolean) {
+    setAcceptedIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(changeId);
+      else next.delete(changeId);
+      return next;
+    });
+  }
+
+  async function saveReview() {
+    if (!review || !canSaveReview) return;
+    setIsSaving(true);
+    setSaveError("");
+    try {
+      await review.onSave(reviewedAfter, {
+        acceptedIds: Array.from(acceptedIds),
+        editedValues,
+      });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : t("review.saveFailed"));
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
-      <WorkflowStepper labels={workflowLabels} current={2} />
+      <WorkflowStepper
+        labels={workflowLabels}
+        current={currentStep ?? (review ? 1 : 2)}
+        onStepChange={onStepChange}
+      />
       <section className="rounded-lg border border-line bg-surface p-5 shadow-[0_18px_50px_rgba(49,48,48,0.05)] lg:p-6">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
           <div>
@@ -66,7 +142,11 @@ export function ResumeOptimizationResult({
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
           </div>
           <div className="flex gap-3">
-            {backLabel && onBack ? (
+            {review?.onCancel ? (
+              <Button type="button" variant="outline" size="lg" onClick={review.onCancel} disabled={isSaving}>
+                {t("review.cancel")}
+              </Button>
+            ) : backLabel && onBack ? (
               <button
                 type="button"
                 onClick={onBack}
@@ -75,24 +155,54 @@ export function ResumeOptimizationResult({
                 {backLabel}
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={onOpenEditor}
-              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white"
-            >
-              {openEditorLabel ?? t("openEditor")}
-            </button>
+            {review ? (
+              <Button type="button" size="lg" onClick={saveReview} disabled={!canSaveReview}>
+                {isSaving ? t("review.saving") : t("review.save")}
+              </Button>
+            ) : onOpenEditor ? (
+              <button
+                type="button"
+                onClick={onOpenEditor}
+                className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white"
+              >
+                {openEditorLabel ?? t("openEditor")}
+              </button>
+            ) : null}
           </div>
         </div>
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          {summaryItems.map((item) => (
-            <div key={item.label} className="rounded-lg bg-surface-low px-4 py-3">
-              <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-              <p className="mt-1 text-sm leading-6 text-foreground">{item.value}</p>
-            </div>
-          ))}
-        </div>
+        {!review ? (
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {summaryItems.map((item) => (
+              <div key={item.label} className="rounded-lg bg-surface-low px-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
+                <p className="mt-1 text-sm leading-6 text-foreground">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
+
+      {review ? (
+        <ResumeChangeReview
+          changes={reviewChanges}
+          issues={review.issues}
+          acceptedIds={acceptedIds}
+          editedValues={editedValues}
+          saveError={saveError}
+          isSaving={isSaving}
+          canSave={canSaveReview}
+          onToggle={toggleReviewChange}
+          onEdit={(changeId, value) => setEditedValues((current) => ({ ...current, [changeId]: value }))}
+          onRestore={(changeId) => setEditedValues((current) => {
+            const next = { ...current };
+            delete next[changeId];
+            return next;
+          })}
+          onAcceptAll={() => setAcceptedIds(new Set(reviewChanges.map((change) => change.id)))}
+          onRejectAll={() => setAcceptedIds(new Set())}
+          onSave={saveReview}
+        />
+      ) : null}
 
       <section className="grid items-stretch gap-5 xl:grid-cols-2">
         <ResumeDocumentComparePane
@@ -103,10 +213,10 @@ export function ResumeOptimizationResult({
         <ResumeDocumentComparePane
           title={t("after")}
           subtitle={t("afterSubtitle")}
-          resume={after}
+          resume={reviewedAfter}
           optimized
           changedSections={diffSections}
-          action={
+          action={onOpenEditor ? (
             <button
               type="button"
               onClick={onOpenEditor}
@@ -116,10 +226,241 @@ export function ResumeOptimizationResult({
             >
               <FileText className="h-5 w-5" />
             </button>
-          }
+          ) : undefined}
         />
       </section>
     </div>
+  );
+}
+
+function ResumeChangeReview({
+  changes,
+  issues,
+  acceptedIds,
+  editedValues,
+  saveError,
+  isSaving,
+  canSave,
+  onToggle,
+  onEdit,
+  onRestore,
+  onAcceptAll,
+  onRejectAll,
+  onSave,
+}: {
+  changes: ResumeReviewChange[];
+  issues: ResumeDiagnosisIssue[];
+  acceptedIds: ReadonlySet<string>;
+  editedValues: Readonly<Record<string, string>>;
+  saveError: string;
+  isSaving: boolean;
+  canSave: boolean;
+  onToggle: (changeId: string, checked: boolean) => void;
+  onEdit: (changeId: string, value: string) => void;
+  onRestore: (changeId: string) => void;
+  onAcceptAll: () => void;
+  onRejectAll: () => void;
+  onSave: () => void;
+}) {
+  const t = useTranslations("optimizationResult.review");
+  const groupedChanges = useMemo(() => {
+    const groups = new Map<ResumeReviewSection, ResumeReviewChange[]>();
+    for (const change of changes) {
+      groups.set(change.section, [...(groups.get(change.section) ?? []), change]);
+    }
+    return Array.from(groups.entries());
+  }, [changes]);
+  return (
+    <section className="rounded-lg border border-line bg-surface p-5 shadow-[0_18px_50px_rgba(49,48,48,0.04)] lg:p-6">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+        <div>
+          <h2 className="font-serif text-xl font-semibold">{t("title")}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("description")}</p>
+          <p className="mt-2 text-sm font-medium text-primary" aria-live="polite">
+            {t("acceptedCount", { accepted: acceptedIds.size, total: changes.length })}
+          </p>
+        </div>
+        {changes.length ? (
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={onRejectAll} disabled={isSaving}>
+              {t("rejectAll")}
+            </Button>
+            <Button type="button" variant="outline" onClick={onAcceptAll} disabled={isSaving}>
+              {t("acceptAll")}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      {groupedChanges.length ? (
+        <div className="mt-5 space-y-3">
+          {groupedChanges.map(([section, sectionChanges], index) => (
+            <ResumeReviewSectionGroup
+              key={section}
+              section={section}
+              changes={sectionChanges}
+              issues={issues}
+              acceptedIds={acceptedIds}
+              editedValues={editedValues}
+              initiallyOpen={index === 0}
+              disabled={isSaving}
+              onToggle={onToggle}
+              onEdit={onEdit}
+              onRestore={onRestore}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-5 rounded-lg bg-surface-low px-4 py-4 text-sm text-muted-foreground">{t("noChanges")}</p>
+      )}
+
+      {saveError ? (
+        <p className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">
+          {saveError}
+        </p>
+      ) : null}
+      {!acceptedIds.size && changes.length ? (
+        <p className="mt-4 text-sm text-muted-foreground">{t("selectAtLeastOne")}</p>
+      ) : null}
+      <div className="mt-5 flex justify-end">
+        <Button type="button" size="lg" onClick={onSave} disabled={!canSave}>
+          {isSaving ? t("saving") : t("save")}
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function ResumeReviewSectionGroup({
+  section,
+  changes,
+  issues,
+  acceptedIds,
+  editedValues,
+  initiallyOpen,
+  disabled,
+  onToggle,
+  onEdit,
+  onRestore,
+}: {
+  section: ResumeReviewSection;
+  changes: ResumeReviewChange[];
+  issues: ResumeDiagnosisIssue[];
+  acceptedIds: ReadonlySet<string>;
+  editedValues: Readonly<Record<string, string>>;
+  initiallyOpen: boolean;
+  disabled: boolean;
+  onToggle: (changeId: string, checked: boolean) => void;
+  onEdit: (changeId: string, value: string) => void;
+  onRestore: (changeId: string) => void;
+}) {
+  const t = useTranslations("optimizationResult.review");
+  const [open, setOpen] = useState(initiallyOpen);
+  const acceptedCount = changes.filter((change) => acceptedIds.has(change.id)).length;
+
+  return (
+    <details
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+      className="group overflow-hidden rounded-lg border border-line bg-background"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden [&::-webkit-details-marker]:hidden">
+        <span className="font-medium">{t(`sections.${section}`)}</span>
+        <span className="text-xs text-muted-foreground">
+          {t("groupCount", { accepted: acceptedCount, total: changes.length })}
+        </span>
+        <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="space-y-3 border-t border-line bg-surface-low/40 p-3">
+        {changes.map((change, index) => {
+          const checked = acceptedIds.has(change.id);
+          const value = editedValues[change.id] ?? change.after;
+          const reason = issues.find((issue) => resumeReviewChangeAddressesIssue(change, issue));
+          const checkboxId = `resume-review-${change.id.replaceAll(":", "-")}`;
+          const textareaId = `${checkboxId}-suggestion`;
+
+          return (
+            <article
+              key={change.id}
+              className={cn(
+                "rounded-lg border p-4 transition-colors",
+                checked ? "border-primary/35 bg-primary-soft/30" : "border-line bg-background opacity-75",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id={checkboxId}
+                  checked={checked}
+                  disabled={disabled}
+                  onCheckedChange={(next) => onToggle(change.id, next === true)}
+                  className="mt-1"
+                />
+                <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer">
+                  <span className="block font-medium">
+                    {change.itemLabel || t(`fields.${change.field}`)}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {change.itemLabel
+                      ? t("itemField", { field: t(`fields.${change.field}`), index: index + 1 })
+                      : t(`fields.${change.field}`)}
+                  </span>
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={checked ? "default" : "outline"}
+                  aria-pressed={checked}
+                  disabled={disabled}
+                  onClick={() => onToggle(change.id, !checked)}
+                  className="rounded-full"
+                >
+                  {checked ? t("accepted") : t("rejected")}
+                </Button>
+              </div>
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-lg border border-line bg-surface-low px-3 py-3">
+                  <p className="text-xs font-medium text-muted-foreground">{t("original")}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{change.before}</p>
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <label htmlFor={textareaId} className="text-xs font-medium text-muted-foreground">
+                      {t("suggestion")}
+                    </label>
+                    {editedValues[change.id] !== undefined ? (
+                      <button
+                        type="button"
+                        onClick={() => onRestore(change.id)}
+                        disabled={disabled}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        {t("restore")}
+                      </button>
+                    ) : null}
+                  </div>
+                  <Textarea
+                    id={textareaId}
+                    value={value}
+                    disabled={disabled || !checked}
+                    onChange={(event) => onEdit(change.id, event.target.value)}
+                    maxLength={4_000}
+                    className="min-h-28 resize-y bg-background"
+                    aria-invalid={checked && !value.trim()}
+                  />
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                <span className="font-medium text-foreground">{t("reason")}</span>
+                {reason ? `${reason.title}：${reason.suggestion}` : t("genericReason")}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    </details>
   );
 }
 
@@ -265,12 +606,22 @@ export function buildResumeDiffSections(before: ResumeContent, after: ResumeCont
     });
   }
 
-  if (before.profile.summary !== after.profile.summary || before.selfReview !== after.selfReview) {
+  const profileSummaryChanged = before.profile.summary !== after.profile.summary;
+  const selfReviewChanged = before.selfReview !== after.selfReview;
+  if (profileSummaryChanged || selfReviewChanged) {
     diffs.push({
       key: "summary",
-      title: "自我评价",
-      previewTitles: ["自我评价", "求职摘要"],
-      detail: "求职摘要或自我评价经过改写。",
+      title: profileSummaryChanged && selfReviewChanged
+        ? "个人简介与自我评价"
+        : profileSummaryChanged
+          ? "个人简介"
+          : "自我评价",
+      previewTitles: ["个人简介", "自我评价", "求职摘要"],
+      detail: profileSummaryChanged && selfReviewChanged
+        ? "个人简介和自我评价经过改写。"
+        : profileSummaryChanged
+          ? "个人简介经过改写。"
+          : "自我评价经过改写。",
     });
   }
 
@@ -419,22 +770,8 @@ function buildDisplayChangedSections(diffSections: ResumeDiffSection[], metaChan
   const diffTitles = diffSections.map((section) => section.title);
   const metaTitles = normalizeDisplayChangeTitles(metaChanges);
 
-  if (!isGeneral) return metaTitles.length ? metaTitles : diffTitles;
-  if (!diffTitles.length) return [];
-  if (!metaTitles.length) return diffTitles;
-
-  const diffKeys = new Set(diffTitles.map(canonicalDisplayChange));
-  const usedKeys = new Set<string>();
-  const orderedMetaTitles = metaTitles.filter((title) => {
-    const key = canonicalDisplayChange(title);
-    if (!diffKeys.has(key)) return false;
-    usedKeys.add(key);
-    return true;
-  });
-  return uniqueTextList([
-    ...orderedMetaTitles,
-    ...diffTitles.filter((title) => !usedKeys.has(canonicalDisplayChange(title))),
-  ]);
+  if (isGeneral) return diffTitles;
+  return metaTitles.length ? metaTitles : diffTitles;
 }
 
 function normalizeDisplayChangeTitles(items: string[]) {
@@ -445,7 +782,8 @@ function humanizeDisplayChange(value: string) {
   const text = value.trim();
   if (!text) return "";
   if (/^(自我评价|项目经历|工作经历|实习经历|教育背景|技能特长|自定义模块|奖项证书)$/.test(text)) return text;
-  if (/profile\.summary|selfReview|求职摘要|核心能力|自我评价/.test(text)) return "自我评价与核心能力";
+  if (/profile\.summary|求职摘要|个人简介|核心能力/.test(text)) return "个人简介";
+  if (/selfReview|自我评价/.test(text)) return "自我评价";
   if (/projects?(\.|$)|项目/.test(text)) return "项目经历";
   if (/experiences?(\.|$)|工作/.test(text)) return "工作经历";
   if (/internships?(\.|$)|实习/.test(text)) return "实习经历";
@@ -455,18 +793,6 @@ function humanizeDisplayChange(value: string) {
   if (/awards?(\.|$)|奖项|证书|认证/.test(text)) return "奖项证书";
   if (/[a-zA-Z]+\.[a-zA-Z]+/.test(text)) return "";
   return text.replace(/[。；;].*$/, "").slice(0, 18);
-}
-
-function canonicalDisplayChange(value: string) {
-  if (/自我评价|核心能力|求职摘要/.test(value)) return "summary";
-  if (/项目/.test(value)) return "projects";
-  if (/工作/.test(value)) return "experiences";
-  if (/实习/.test(value)) return "internships";
-  if (/教育/.test(value)) return "education";
-  if (/技能|技术栈/.test(value)) return "skills";
-  if (/奖项|证书|认证/.test(value)) return "awards";
-  if (/自定义|主要优势/.test(value)) return "customSections";
-  return value;
 }
 
 function formatDisplayChangeList(items: string[], limit = 3) {
@@ -482,7 +808,7 @@ function cleanMetaSummary(value?: string) {
   return text
     .replace(/\bcustomSections\b/g, "自定义模块")
     .replace(/\bprojects\.highlights\b/g, "项目经历")
-    .replace(/\bprofile\.summary\b/g, "自我评价")
+    .replace(/\bprofile\.summary\b/g, "个人简介")
     .replace(/\bselfReview\b/g, "自我评价")
     .replace(/\bskills\b/g, "技能特长")
     .replace(/\bawards\b/g, "奖项证书");

@@ -20,6 +20,7 @@ export type ResumeLibraryVersion = {
 export type ResumeLibraryCard = {
   id: string;
   kind: ResumeLibraryCardKind;
+  optimizationKind?: "job" | "general";
   title: string;
   detail: string;
   template: string;
@@ -117,13 +118,23 @@ export function buildResumeLibraryCards({
 
   const versionCards: ResumeLibraryCard[] = versions.map((version) => {
     const editedAt = version.updatedAt ?? version.createdAt;
-    const isOptimized = Boolean(version.jobId);
+    const optimizationKind = getResumeOptimizationKind(version);
+    const isOptimized = Boolean(optimizationKind);
     const templateKey = getValidResumeTemplate(version.content.editor?.template);
     return {
       id: version.id,
       kind: isOptimized ? "优化后简历" : "原简历",
-      title: isOptimized ? normalizeOptimizedResumeVersionName(version.name) : version.name || "未命名原简历",
-      detail: version.summary || (isOptimized ? "基于 JD 生成的优化后简历" : "原简历版本，可作为优化基准"),
+      optimizationKind,
+      title: optimizationKind === "job"
+        ? normalizeOptimizedResumeVersionName(version.name)
+        : version.name || "未命名原简历",
+      detail: version.summary || (
+        optimizationKind === "job"
+          ? "基于 JD 生成的岗位优化简历"
+          : optimizationKind === "general"
+            ? "经 AI 分析和逐条审阅生成的通用优化简历"
+            : "原简历版本，可作为优化基准"
+      ),
       template: resumeTemplateLabels[templateKey] ?? "现代",
       templateKey,
       updatedAt: version.updatedAt ? formatResumeEditedAt(editedAt) : formatResumeCreatedAt(editedAt),
@@ -135,7 +146,6 @@ export function buildResumeLibraryCards({
   });
 
   const keyword = search.trim().toLowerCase();
-  const optimizedVersionIds = new Set(versions.filter((version) => version.jobId).map((version) => version.id));
   return [mainCard, ...versionCards]
     .filter((card): card is ResumeLibraryCard => Boolean(card))
     .filter((card) => {
@@ -144,8 +154,8 @@ export function buildResumeLibraryCards({
     })
     .sort((a, b) => {
       if (sortMode === "recentOptimized") {
-        const aOptimized = a.target.kind === "version" && optimizedVersionIds.has(a.id);
-        const bOptimized = b.target.kind === "version" && optimizedVersionIds.has(b.id);
+        const aOptimized = Boolean(a.optimizationKind);
+        const bOptimized = Boolean(b.optimizationKind);
         if (Boolean(aOptimized) !== Boolean(bOptimized)) return aOptimized ? -1 : 1;
       }
       return b.timestamp - a.timestamp;
@@ -160,6 +170,14 @@ export function buildResumeEditorPath(target: ResumeLibrarySaveTarget) {
   return target.kind === "version" ? `/resume/edit?version=${encodeURIComponent(target.id)}` : "/resume/edit";
 }
 
+export function getResumeOptimizationKind(
+  version: Pick<ResumeLibraryVersion, "jobId" | "content">,
+): "job" | "general" | undefined {
+  if (version.jobId) return "job";
+  const base = (version.content as ResumeContent & { _tailoringBaseResume?: unknown })._tailoringBaseResume;
+  return base && typeof base === "object" && !Array.isArray(base) ? "general" : undefined;
+}
+
 export function buildResumeCopy(
   content: ResumeContent,
   sourceTitle: string,
@@ -169,9 +187,11 @@ export function buildResumeCopy(
   const copy = structuredClone(content) as ResumeContent & {
     _tailoringBaseResume?: unknown;
     _optimizationMeta?: unknown;
+    _optimizationStages?: unknown;
   };
   delete copy._tailoringBaseResume;
   delete copy._optimizationMeta;
+  delete copy._optimizationStages;
 
   const suffix = ` - ${copyLabel.trim() || "副本"}`;
   const suffixPattern = new RegExp(`${escapeRegExp(suffix)}(?: \\d+)?$`, "i");

@@ -17,39 +17,41 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type {
-  ResumeDiagnosis,
-  ResumeDiagnosisIssue,
-  ResumeOptimizationPreference,
-} from "@/lib/ai/resume-diagnosis";
+import type { ResumeDiagnosis, ResumeDiagnosisIssue } from "@/lib/ai/resume-diagnosis";
+import { isAiEditableResumeIssue } from "@/lib/ai/resume-diagnosis";
 import type { ResumeContent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const preferenceKeys: ResumeOptimizationPreference[] = ["clarity", "impact", "concise", "ats"];
 const severityKeys: ResumeDiagnosisIssue["severity"][] = ["high", "medium", "low"];
+
+export type ResumeDiagnosisSelection = {
+  diagnosis: ResumeDiagnosis;
+  selectedIssueIds: string[];
+  additionalDirection: string;
+};
 
 export function ResumeDiagnosisDialog({
   open,
   resume,
+  initialSelection,
   onOpenChange,
   onOptimize,
 }: {
   open: boolean;
   resume: ResumeContent;
+  initialSelection?: ResumeDiagnosisSelection;
   onOpenChange: (open: boolean) => void;
-  onOptimize: (input: {
-    diagnosis: ResumeDiagnosis;
-    selectedIssueIds: string[];
-    preferences: ResumeOptimizationPreference[];
-    additionalDirection: string;
-  }) => Promise<void>;
+  onOptimize: (input: ResumeDiagnosisSelection) => Promise<void>;
 }) {
   const t = useTranslations("resumeWorkbench.diagnosisDialog");
   const locale = useLocale() === "en" ? "en" : "zh-CN";
-  const [diagnosis, setDiagnosis] = useState<ResumeDiagnosis | null>(null);
-  const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>([]);
-  const [preferences, setPreferences] = useState<ResumeOptimizationPreference[]>(["clarity", "impact"]);
-  const [additionalDirection, setAdditionalDirection] = useState("");
+  const [diagnosis, setDiagnosis] = useState<ResumeDiagnosis | null>(initialSelection?.diagnosis ?? null);
+  const [selectedIssueIds, setSelectedIssueIds] = useState<string[]>(
+    initialSelection?.selectedIssueIds.filter((id) =>
+      initialSelection.diagnosis.issues.some((issue) => issue.id === id && isAiEditableResumeIssue(issue)),
+    ) ?? [],
+  );
+  const [additionalDirection, setAdditionalDirection] = useState(initialSelection?.additionalDirection ?? "");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [status, setStatus] = useState("");
@@ -74,7 +76,7 @@ export function ResumeDiagnosisDialog({
         throw new Error(payload.message || payload.error || t("analysisFailed"));
       }
       const recommendedIds = payload.diagnosis.issues
-        .filter((issue) => issue.severity !== "low")
+        .filter((issue) => issue.severity !== "low" && isAiEditableResumeIssue(issue))
         .map((issue) => issue.id);
       setDiagnosis(payload.diagnosis);
       setSelectedIssueIds(recommendedIds);
@@ -92,14 +94,6 @@ export function ResumeDiagnosisDialog({
     );
   }
 
-  function togglePreference(preference: ResumeOptimizationPreference) {
-    setPreferences((current) =>
-      current.includes(preference)
-        ? current.filter((item) => item !== preference)
-        : [...current, preference],
-    );
-  }
-
   async function optimize() {
     if (!diagnosis || selectedIssueIds.length === 0 || isOptimizing) return;
     setIsOptimizing(true);
@@ -108,7 +102,6 @@ export function ResumeDiagnosisDialog({
       await onOptimize({
         diagnosis,
         selectedIssueIds,
-        preferences,
         additionalDirection: additionalDirection.trim(),
       });
       onOpenChange(false);
@@ -119,6 +112,7 @@ export function ResumeDiagnosisDialog({
   }
 
   const selectedCount = selectedIssueIds.length;
+  const editableIssueCount = diagnosis?.issues.filter(isAiEditableResumeIssue).length ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => {
@@ -191,35 +185,9 @@ export function ResumeDiagnosisDialog({
               )}
             </section>
 
-            {diagnosis.issues.length ? (
+            {editableIssueCount ? (
               <section>
-                <h3 className="text-sm font-semibold">{t("preferencesTitle")}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{t("preferencesHint")}</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {preferenceKeys.map((preference) => {
-                    const active = preferences.includes(preference);
-                    return (
-                      <button
-                        key={preference}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => togglePreference(preference)}
-                        className={cn(
-                          "rounded-lg border px-4 py-3 text-left transition-colors",
-                          active
-                            ? "border-primary bg-primary-soft"
-                            : "border-line bg-background hover:bg-surface-low",
-                        )}
-                      >
-                        <span className="block text-sm font-medium">{t(`preferences.${preference}.title`)}</span>
-                        <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                          {t(`preferences.${preference}.description`)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-4 space-y-2">
+                <div className="space-y-2">
                   <div className="flex items-baseline justify-between gap-3">
                     <Label htmlFor="resume-additional-direction">{t("additionalDirection.label")}</Label>
                     <span className="text-xs text-muted-foreground">{t("additionalDirection.optional")}</span>
@@ -273,7 +241,7 @@ export function ResumeDiagnosisDialog({
               {diagnosis || status ? t("reanalyze") : t("startAnalysis")}
             </Button>
           ) : null}
-          {diagnosis?.issues.length ? (
+          {editableIssueCount ? (
             <Button
               disabled={isOptimizing || selectedCount === 0}
               onClick={() => void optimize()}
@@ -352,25 +320,35 @@ function DiagnosisIssue({
 }) {
   const t = useTranslations("resumeWorkbench.diagnosisDialog");
   const checkboxId = `resume-diagnosis-${issue.id}`;
+  const editable = isAiEditableResumeIssue(issue);
 
   return (
     <label
       htmlFor={checkboxId}
       className={cn(
-        "flex cursor-pointer gap-3 px-4 py-3 transition-colors",
-        checked ? "bg-primary-soft/40" : "bg-background hover:bg-surface-low",
+        "flex gap-3 px-4 py-3 transition-colors",
+        editable ? "cursor-pointer" : "cursor-default bg-amber-50/60",
+        checked ? "bg-primary-soft/40" : editable ? "bg-background hover:bg-surface-low" : "",
       )}
     >
       <Checkbox
         id={checkboxId}
         checked={checked}
-        onCheckedChange={onCheckedChange}
+        disabled={!editable}
+        onCheckedChange={(next) => {
+          if (editable) onCheckedChange(next === true);
+        }}
         className="mt-1"
       />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{issue.title}</span>
           <span className="text-xs text-muted-foreground">{issue.location}</span>
+          {!editable ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              {t(issue.action === "user-input" ? "userSupplement" : "userConfirmation")}
+            </span>
+          ) : null}
         </span>
         {issue.evidence ? (
           <span className="mt-2 block rounded-md bg-white/70 px-3 py-2 text-xs leading-5 text-muted-foreground">

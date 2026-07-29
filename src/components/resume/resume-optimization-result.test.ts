@@ -21,6 +21,20 @@ const baseResume: ResumeContent = {
 };
 
 describe("resume optimization result helpers", () => {
+  it("keeps personal summary and self-review labels distinct", () => {
+    const personalSummary = {
+      ...baseResume,
+      profile: { ...baseResume.profile, summary: "突出 AI 产品规划经验。" },
+    };
+    const selfReview = {
+      ...baseResume,
+      selfReview: "关注真实业务中的产品落地。",
+    };
+
+    expect(buildResumeDiffSections(baseResume, personalSummary)[0]?.title).toBe("个人简介");
+    expect(buildResumeDiffSections(baseResume, selfReview)[0]?.title).toBe("自我评价");
+  });
+
   it("reports custom section changes in diff and summary", () => {
     const optimized: ResumeContent = {
       ...baseResume,
@@ -123,7 +137,7 @@ describe("resume optimization result helpers", () => {
     expect(summaryItems).toEqual(
       expect.arrayContaining([
         { label: "能力关键词", value: "AI Agent开发、知识图谱、大模型应用" },
-        { label: "调整范围", value: "自我评价与核心能力、自定义模块" },
+        { label: "调整范围", value: "个人简介、自定义模块" },
       ]),
     );
     expect(JSON.stringify(summaryItems)).not.toContain("岗位关键词");

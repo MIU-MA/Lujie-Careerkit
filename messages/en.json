@@ -114,7 +114,7 @@
     },
     "resumeLibrary": {
       "title": "My Resumes",
-      "count": "{count} resumes · {optimizedCount} optimized versions",
+      "count": "{count} resumes · {jobOptimizedCount} job-optimized versions · {generalOptimizedCount} general-optimized versions",
       "importing": "Parsing...",
       "import": "Import resume",
       "create": "New resume",
@@ -130,7 +130,9 @@
       "deleteResume": "Delete resume",
       "kind": {
         "original": "Original",
-        "optimized": "Optimized"
+        "optimized": "Optimized",
+        "jobOptimized": "Job-optimized",
+        "generalOptimized": "General-optimized"
       },
       "template": {
         "label": "Template",
@@ -389,6 +391,23 @@
       "footerHint": "You can generate the mock questions next. Evaluation points remain hidden during practice.",
       "back": "Adjust material",
       "start": "Generate and start",
+      "export": {
+        "button": "Export guide",
+        "docx": "Word document",
+        "docxHint": "Complete guide that remains editable",
+        "pdf": "Print / Save as PDF",
+        "pdfHint": "Use the browser print dialog to save a PDF",
+        "downloaded": "The Word document has been downloaded.",
+        "printOpened": "The print window is open. Choose “Save as PDF” to export.",
+        "popupBlocked": "The browser blocked the print window. Allow pop-ups and try again.",
+        "failed": "Export failed. Please try again.",
+        "roleFamily": "Role family",
+        "assumptions": "Assumptions",
+        "requirementLevel": "Requirement level",
+        "evidenceLevel": "Evidence level",
+        "category": "Question category",
+        "preparationDirection": "Preparation direction"
+      },
       "states": {
         "direct": "Direct evidence",
         "transferable": "Transferable experience",
@@ -701,8 +720,8 @@
       "analysisDone": "Resume analysis complete.",
       "analysisFailed": "Resume analysis failed. Try again later.",
       "summary": "Analysis overview",
-      "issuesTitle": "Issues to improve",
-      "issuesHint": "Higher-priority issues are selected by default. Adjust the selection as needed.",
+      "issuesTitle": "Analysis findings",
+      "issuesHint": "Issues AI can safely rewrite are selected by default. Missing facts must be supplied, while contradictions such as an impossible GPA or conflicting date must be verified.",
       "selectedCount": "{count} selected",
       "noIssues": "No clear high-priority issues were found. Close this dialog to keep using the original resume.",
       "severity": {
@@ -713,6 +732,8 @@
       "groupCount": "{count} total, {selected} selected",
       "evidence": "Resume text: {evidence}",
       "suggestion": "Suggestion: {suggestion}",
+      "userSupplement": "Add details in editor",
+      "userConfirmation": "Verify in editor",
       "preferencesTitle": "How to optimize",
       "preferencesHint": "Optimization only addresses selected issues and always preserves the resume's facts.",
       "preferences": {
@@ -733,12 +754,12 @@
           "description": "Use conventional wording and supported skill terms."
         }
       },
-      "additionalDirection": {
-        "label": "Additional direction",
-        "optional": "Optional",
-        "placeholder": "For example: keep the GPA format required by my school; prioritize project experience and keep the tone restrained.",
-        "hint": "Use this to correct the analysis or add priorities. It cannot introduce experience, skills, or metrics missing from the resume."
-      },
+        "additionalDirection": {
+          "label": "Tell AI how to revise",
+          "optional": "Optional",
+          "placeholder": "For example: keep useful suggestions but do not change my GPA; make project bullets more specific, replace vague assistance wording with clear ownership, and keep the tone restrained.",
+          "hint": "State what to revise, how to phrase it, and which suggestions to ignore. AI only handles selected issues and must not invent facts."
+        },
       "optimizing": "Generating an optimized version from your choices...",
       "optimizationFailed": "Optimization failed. Try again later.",
       "close": "Not now",
@@ -830,7 +851,55 @@
     "before": "Original",
     "after": "Optimized",
     "afterSubtitle": "Generated optimized resume. Continue refining it in the editor.",
-    "untitled": "Untitled resume"
+    "untitled": "Untitled resume",
+    "review": {
+      "draftReady": "The AI draft is ready. Review each change before saving.",
+      "saved": "Your accepted changes were saved as a new resume version.",
+      "workflowAnalyze": "AI resume analysis",
+      "workflowReview": "Review and edit each change",
+      "workflowSave": "Save AI-optimized resume",
+      "pageTitle": "Review AI changes",
+      "pageDescription": "Accept, reject, or edit each AI suggestion. Saving updates only this general-optimization version; the original resume remains unchanged.",
+      "title": "Review individual changes",
+      "description": "Changes are grouped into collapsible resume sections. Rejecting a change restores its original text in the live preview.",
+      "acceptedCount": "{accepted} of {total} changes accepted",
+      "groupCount": "{accepted} of {total} accepted",
+      "acceptAll": "Accept all",
+      "rejectAll": "Reject all",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "original": "Original text",
+      "suggestion": "AI suggestion (editable)",
+      "restore": "Restore AI suggestion",
+      "reason": "Why this changed: ",
+      "genericReason": "Improves clarity and useful information based on your selected optimization directions.",
+      "itemField": "{field} · change {index}",
+      "cancel": "Back to original",
+      "save": "Save AI-optimized resume",
+      "saving": "Saving",
+      "versionSummary": "AI-optimized resume version saved after reviewing each change.",
+      "saveFailed": "Could not save the reviewed result. Please try again.",
+      "selectAtLeastOne": "Accept at least one change, or return to the original resume if none are useful.",
+      "noChanges": "The AI did not produce any visible text changes, so there is no new version to save.",
+      "sections": {
+        "summary": "Summary and self-review",
+        "education": "Education",
+        "experiences": "Work experience",
+        "internships": "Internships",
+        "projects": "Projects",
+        "skills": "Skills",
+        "awards": "Awards and certifications",
+        "customSections": "Custom sections"
+      },
+      "fields": {
+        "summary": "Summary",
+        "selfReview": "Self-review",
+        "highlight": "Experience bullet",
+        "skills": "Skill order and wording",
+        "awards": "Awards and certifications",
+        "customContent": "Section content"
+      }
+    }
   },
   "settings": {
     "languageTitle": "Language",

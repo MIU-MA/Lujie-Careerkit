@@ -262,11 +262,19 @@ function hydrateEditorSections(
 }
 
 function mergeEditorSections(savedSections: ResumeSection[], generatedSections: ResumeSection[]) {
-  const generatedByType = new Map(generatedSections.map((item) => [item.type, item]));
-  return savedSections.map((saved, index) => ({
-    ...mergeEditorSection(saved, generatedByType.get(saved.type)),
-    sortOrder: index,
-  }));
+  const generatedByType = new Map<string, ResumeSection[]>();
+  const usedByType = new Map<string, number>();
+  for (const section of generatedSections) {
+    generatedByType.set(section.type, [...(generatedByType.get(section.type) ?? []), section]);
+  }
+  return savedSections.map((saved, index) => {
+    const used = usedByType.get(saved.type) ?? 0;
+    usedByType.set(saved.type, used + 1);
+    return {
+      ...mergeEditorSection(saved, generatedByType.get(saved.type)?.[used]),
+      sortOrder: index,
+    };
+  });
 }
 
 function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): ResumeSection {
@@ -302,7 +310,7 @@ function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): Re
               field: next.field,
               startDate: next.startDate,
               endDate: next.endDate,
-              highlights: next.highlights,
+              highlights: mergeHighlights(previous.highlights, next.highlights),
             }),
           ),
         },
@@ -324,7 +332,7 @@ function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): Re
               startDate: next.startDate,
               endDate: next.endDate,
               current: next.current,
-              highlights: next.highlights,
+              highlights: mergeHighlights(previous.highlights, next.highlights),
             }),
           ),
         },
@@ -342,7 +350,7 @@ function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): Re
               name: next.name,
               logo: previous.logo ?? next.logo,
               description: next.description,
-              highlights: next.highlights,
+              highlights: mergeHighlights(previous.highlights, next.highlights),
             }),
           ),
         },
@@ -367,20 +375,44 @@ function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): Re
       const next = generated.content as SkillsContent;
       if (!next.categories.length) return saved;
       const nextSkills = next.categories.flatMap((category) => category.skills);
+      const nextOrder = new Map(nextSkills.map((skill, index) => [skill, index]));
       const previousSkills = new Set(previous.categories.flatMap((category) => category.skills));
-      if (previousSkills.size === new Set(nextSkills).size && nextSkills.every((skill) => previousSkills.has(skill))) return saved;
-      const [firstCategory, ...otherCategories] = previous.categories;
+      const categories = previous.categories.map((category) => ({
+        ...category,
+        skills: category.skills
+          .filter((skill) => nextOrder.has(skill))
+          .sort((left, right) => (nextOrder.get(left) ?? 0) - (nextOrder.get(right) ?? 0)),
+      }));
+      const addedSkills = nextSkills.filter((skill) => !previousSkills.has(skill));
+      if (!categories.length) {
+        categories.push({ id: generateId("skills"), name: "核心技能", skills: [] });
+      }
+      categories[0] = {
+        ...categories[0],
+        skills: [...categories[0].skills, ...addedSkills],
+      };
       return {
         ...saved,
         content: {
           ...previous,
-          categories: [
-            {
-              ...(firstCategory ?? { id: generateId("skills"), name: "核心技能" }),
-              skills: nextSkills,
-            },
-            ...otherCategories,
-          ],
+          categories,
+        },
+      };
+    }
+    case "custom": {
+      const previous = saved.content as CustomContent;
+      const next = generated.content as CustomContent;
+      const previousText = previous.items.map(formatCustomItem).filter(Boolean).join("\n\n");
+      const nextText = next.items.map(formatCustomItem).filter(Boolean).join("\n\n");
+      if (previousText === nextText) return saved;
+      return {
+        ...saved,
+        content: {
+          ...previous,
+          items: next.items.map((item, index) => ({
+            ...item,
+            id: previous.items[index]?.id ?? item.id,
+          })),
         },
       };
     }
@@ -396,6 +428,15 @@ function mergeEditorSection(saved: ResumeSection, generated?: ResumeSection): Re
     default:
       return saved;
   }
+}
+
+function mergeHighlights(saved: string[] = [], generated: string[] = []) {
+  return generated.map((text, index) => {
+    const previous = saved[index];
+    if (!previous || previous === text) return text;
+    const legacyNormalized = previous.replace(/(^|\s)\d{1,2}\.(?=\d)/g, "$1");
+    return legacyNormalized === text ? previous : text;
+  });
 }
 
 function mergeItems<T>(savedItems: T[] = [], generatedItems: T[] = [], merge: (previous: T, next: T) => T) {

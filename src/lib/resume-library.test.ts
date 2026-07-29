@@ -131,13 +131,32 @@ describe("resume library cards", () => {
           createdAt: "2026-06-01T08:00:00.000Z",
           updatedAt: "2026-06-01T08:00:00.000Z",
         },
+        {
+          id: "general-optimized-version",
+          name: "AI优化-林泽宇",
+          summary: "通用优化版本",
+          content: { ...baseContent, _tailoringBaseResume: baseContent } as ResumeContent,
+          createdAt: "2026-05-01T08:00:00.000Z",
+          updatedAt: "2026-05-01T08:00:00.000Z",
+        },
       ],
       search: "",
       sortMode: "recentOptimized",
     });
 
-    expect(cards.map((card) => card.id)).toEqual(["optimized-version", "plain-version", "main"]);
+    expect(cards.map((card) => card.id)).toEqual([
+      "optimized-version",
+      "general-optimized-version",
+      "plain-version",
+      "main",
+    ]);
     expect(cards[0].title).toBe("JD匹配优化-百度 AIDU 大模型算法工程师");
+    expect(cards[0].optimizationKind).toBe("job");
+    expect(cards[1]).toMatchObject({
+      kind: "优化后简历",
+      optimizationKind: "general",
+      title: "AI优化-林泽宇",
+    });
   });
 
   it("keeps custom resume versions addressable in the editor route", () => {
@@ -156,6 +175,7 @@ describe("resume library cards", () => {
       editor: { displayName: "林泽宇的简历" },
       _tailoringBaseResume: baseContent,
       _optimizationMeta: { title: "后端开发实习生" },
+      _optimizationStages: { draft: baseContent },
     } as ResumeContent;
 
     const result = buildResumeCopy(
@@ -169,6 +189,7 @@ describe("resume library cards", () => {
     expect(result.content.editor?.displayName).toBe(result.title);
     expect(result.content).not.toHaveProperty("_tailoringBaseResume");
     expect(result.content).not.toHaveProperty("_optimizationMeta");
+    expect(result.content).not.toHaveProperty("_optimizationStages");
     expect(result.content).not.toBe(optimized);
     expect(result.content.basics).not.toBe(optimized.basics);
   });

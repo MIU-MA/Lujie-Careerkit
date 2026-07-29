@@ -52,7 +52,7 @@ Try the live preview at [https://lujie.chozzc.dev](https://lujie.chozzc.dev).
 - **AI resume analysis**: diagnose action-result structure, evidence, clarity, and organization first; let the user choose which issues and directions to address; then create an independent optimized version while preserving the original.
 - **Cover letters and recruiter greetings**: combine the current resume, a complete JD, and user-provided availability details to generate a formal cover letter or a concise recruiter-chat opener, then edit, copy, or regenerate the result.
 - **JD matching**: paste a complete JD with the company, full role title, requirements, and responsibilities, then let AI diagnose evidence, reorder emphasis, improve wording, and save a role-specific version without inventing experience.
-- **Role-specific interview prep**: combine a selected resume with a complete JD to generate and save a guide with an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan.
+- **Role-specific interview prep**: combine a selected resume with a complete JD to generate and save a guide with an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan, then export the complete guide as an editable Word document or print-ready PDF.
 - **Application tracking**: record companies, roles, sources, stages, deadlines, follow-up dates, notes, JD text, and linked resume versions.
 - **Mock interviews and review**: generate interview questions from a resume and JD, save answer drafts, and create an AI review report you can revisit.
 - **Data and privacy controls**: resumes, jobs, applications, interview prep guides, mock sessions, and settings are stored in a local SQLite database for long-term personal use.
@@ -85,7 +85,7 @@ Open [http://localhost:3000](http://localhost:3000). SQLite data is stored in th
 
 `LUJIE_SETTINGS_SECRET` encrypts locally saved settings secrets. Replace the example value with a long random string.
 
-Use `latest` to follow the newest `main` build. After v0.2.3 is published, use `v0.2.3` to pin that release.
+Use `latest` to follow the newest `main` build. After v0.2.4 is published, use `v0.2.4` to pin that release.
 
 ### Local Development
 
@@ -139,6 +139,18 @@ AI features stay disabled until the settings are saved and the connection test s
 
 ## Release Notes
 
+### v0.2.4
+
+#### Interview preparation export
+
+- Added an “Export guide” action to generated interview preparation materials, with Word and PDF export options.
+
+#### Review and selectively accept AI resume changes
+
+- AI resume optimization now opens a step-by-step review screen. Changes are grouped by resume section and show the original text beside an editable AI suggestion.
+- Each change can be accepted, rejected, or edited independently. The live preview follows the current choices, and only accepted content is saved to a new general-optimization version while the original resume remains unchanged.
+- The resume library distinguishes general-optimization versions from JD-optimized versions. GPA, dates, missing facts, and other information that AI should not infer are directed back to the editor for confirmation or completion.
+
 ### v0.2.3
 
 #### AI resume analysis
@@ -165,18 +177,6 @@ AI features stay disabled until the settings are saved and the connection test s
 
 - Start date, internship duration, and weekly attendance are used only when the user explicitly provides them. Requirements found only in the JD are never presented as candidate capabilities.
 - AI requests continue to remove email addresses, phone numbers, personal links, logos, editor settings, and internal optimization metadata, with bounded input and schema-validated output.
-
-### v0.2.1
-
-#### Resume copies and version maintenance
-
-- Create an independent copy from the resume library or editor and continue editing it immediately. The original stays unchanged, and the new copy does not inherit application, job, or interview links.
-- Copies preserve all resume content, sections, templates, and themes. Repeated copies are named “Copy”, “Copy 2”, and so on to avoid ambiguity.
-- Copies created from resumes optimized after AI analysis retain all optimized content while removing internal optimization snapshots and job links, making them ordinary, independently maintained resume versions.
-
-#### Resume stability
-
-- Fixed skill categories being merged or duplicated after saving, reopening, or reordering the flattened skill list.
 
 ## FAQ
 

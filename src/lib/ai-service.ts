@@ -4,9 +4,10 @@ import { runAiObjectTask, type AiTaskResult } from "./ai/tasks";
 import type { EffectiveAiSettings } from "./ai/settings";
 import { buildAiResumeSnapshot } from "./ai/resume-snapshot";
 import {
+  isAiEditableResumeIssue,
+  normalizeResumeDiagnosis,
   resumeDiagnosisSchema,
   type ResumeDiagnosis,
-  type ResumeOptimizationPreference,
 } from "./ai/resume-diagnosis";
 import { resumeContentSchema } from "./resume-content";
 import { buildOptimizedResumeVersionName, buildTailoredResumeVersion } from "./resume-versioning";
@@ -124,7 +125,6 @@ export async function optimizeResumeWithAI(input: {
   resume: ResumeContent;
   diagnosis?: ResumeDiagnosis;
   selectedIssueIds?: string[];
-  preferences?: ResumeOptimizationPreference[];
   additionalDirection?: string;
   locale?: "zh-CN" | "en";
   settings?: EffectiveAiSettings;
@@ -132,8 +132,9 @@ export async function optimizeResumeWithAI(input: {
   const settings = await resolveAiSettings(input.settings);
   const fallbackMeta = buildDefaultGeneralMeta(input.resume);
   const selectedIds = new Set(input.selectedIssueIds ?? []);
-  const selectedIssues = input.diagnosis?.issues.filter((issue) => selectedIds.has(issue.id)) ?? [];
-  const preferenceLines = buildGeneralOptimizationPreferenceLines(input.preferences ?? [], input.locale);
+  const selectedIssues = input.diagnosis?.issues.filter(
+    (issue) => selectedIds.has(issue.id) && isAiEditableResumeIssue(issue),
+  ) ?? [];
   const localeInstruction = input.locale === "en"
     ? "Use English for rewritten resume text and meta descriptions."
     : "使用中文改写简历文本和 meta 说明。";
@@ -155,7 +156,7 @@ export async function optimizeResumeWithAI(input: {
       "1. 不要新增原简历不存在的事实，包括学校、公司、岗位、项目、奖项、证书、技能、时间、链接、量化数字和业务结果。",
       "2. 不要增加或删除 education / experiences / internships / projects / awards / customSections 的条目数量。",
       "3. 保留姓名、邮箱、电话、城市、链接、学校、公司、项目名、角色名、起止时间、自定义模块标题等基础事实。",
-      "4. 可以重写已有 highlights、summary、自我评价和自定义模块正文；没有证据时宁可保守表达，不要编造。",
+      "4. 可以重写已有 highlights、个人简介、自我评价和自定义模块正文；profile.summary 或 selfReview 原本为空时必须继续留空，不要擅自创建可选模块。",
       "5. 输出必须是可被 JSON.parse 解析的对象，不要包裹解释文字。",
       "6. 通用 AI 优化没有目标公司和目标岗位，meta.company 和 meta.title 必须留空。",
       "7. meta.keywords 写 3-6 个能概括这份简历能力重点的关键词；meta.changes 只写 2-5 个用户能看懂的模块名，如自我评价、项目经历、技能特长、自定义模块；不要写 profile.summary / projects.highlights / customSections 等内部字段名，也不要写很长的实现说明。",
@@ -167,9 +168,6 @@ export async function optimizeResumeWithAI(input: {
         ? JSON.stringify(selectedIssues, null, 2)
         : "未提供诊断问题；按通用目标做保守优化。",
       "只针对用户选择的问题做必要改写，不要擅自扩大优化范围。",
-      "",
-      "用户选择的优化方向：",
-      preferenceLines.length ? preferenceLines.map((line) => `- ${line}`).join("\n") : "- 保持原意并提升表达清晰度。",
       "",
       "用户其他补充（可选）：",
       input.additionalDirection?.trim()
@@ -204,7 +202,8 @@ export async function analyzeResumeWithAI(input: {
 }): Promise<ResumeDiagnosisTaskResult> {
   const settings = await resolveAiSettings(input.settings);
   const inEnglish = input.locale === "en";
-  return runAiObjectTask({
+  const currentDate = new Date().toISOString().slice(0, 10);
+  const result = await runAiObjectTask({
     settings,
     schema: resumeDiagnosisSchema,
     system: inEnglish
@@ -226,6 +225,9 @@ export async function analyzeResumeWithAI(input: {
             "5. Return at most 12 concrete issues. Each issue must point to a section and a short piece of resume evidence; use an empty evidence string only when the problem is missing content.",
             "6. Do not produce a numeric score or a fake STAR completion rate.",
             "7. Use stable IDs issue-1, issue-2, and so on.",
+            "8. Set action to ai-edit when existing text can be safely rewritten. Use user-input only when factual content is entirely absent, evidence is empty, and the candidate must supply it. Use user-confirm only for a contradictory hard fact such as an impossible GPA or conflicting date.",
+            "9. profile.summary (personal summary) and selfReview (self-evaluation) are optional alternatives. Never report profile.summary as missing when selfReview already provides equivalent summary content, and never require both.",
+            `10. The current date is ${currentDate}. Email, phone, links, and other contact details are intentionally removed before analysis for privacy. Never report them as missing or invalid.`,
           ].join("\n")
         : [
             "1. STAR 只作为诊断工具，不是僵硬模板；场景和任务可以由标题或上下文隐含，重点检查行动、方法和结果是否清楚。",
@@ -235,6 +237,9 @@ export async function analyzeResumeWithAI(input: {
             "5. 最多返回 12 个具体问题。每个问题必须定位到模块并引用一小段简历证据；仅在内容缺失时 evidence 可以为空。",
             "6. 不输出总分、虚假的 STAR 完成率或雷达图数据。",
             "7. id 使用 issue-1、issue-2 等稳定格式。",
+            "8. 每个问题必须填写 action：已有文字可以安全改写时使用 ai-edit；只有真实信息完全缺失、evidence 为空且必须由用户提供时才使用 user-input；GPA 分子大于满分、日期冲突等硬事实矛盾使用 user-confirm。",
+            "9. profile.summary（个人简介）与 selfReview（自我评价）是可选且可替代的表达模块；selfReview 已有同类内容时不得诊断 profile.summary 缺失，也不得要求两者同时存在。",
+            `10. 当前日期为 ${currentDate}，邮箱、电话、链接等联系方式会在分析前因隐私保护被主动移除，不得诊断这些字段缺失或有误。`,
           ].join("\n"),
       "",
       inEnglish
@@ -249,26 +254,10 @@ export async function analyzeResumeWithAI(input: {
     },
     taskLabel: inEnglish ? "Resume analysis" : "简历诊断",
   });
-}
-
-function buildGeneralOptimizationPreferenceLines(
-  preferences: ResumeOptimizationPreference[],
-  locale: "zh-CN" | "en" = "zh-CN",
-) {
-  const lines = locale === "en"
-    ? {
-        clarity: "Improve clarity and make ownership explicit without changing facts.",
-        impact: "Strengthen action-method-result structure using only evidence already present in the resume.",
-        concise: "Remove repetition and shorten verbose text while preserving important evidence.",
-        ats: "Use conventional section language and natural, searchable skill terms already supported by the resume.",
-      }
-    : {
-        clarity: "提升表达清晰度，明确个人行动和贡献，但不改变事实。",
-        impact: "强化“行动 + 方法 + 结果”结构，只使用原简历已有证据。",
-        concise: "删除重复和冗长表达，同时保留重要事实与成果。",
-        ats: "使用常规栏目表达和简历已有证据支持的技能关键词，提升 ATS 可读性。",
-      };
-  return Array.from(new Set(preferences)).map((preference) => lines[preference]);
+  return {
+    ...result,
+    data: normalizeResumeDiagnosis(result.data, input.resume),
+  };
 }
 
 async function resolveAiSettings(settings?: EffectiveAiSettings) {
@@ -379,7 +368,15 @@ function normalizeTailoredResume(next: ResumeContent, original: ResumeContent): 
 }
 
 function normalizeOptimizedResume(next: ResumeContent, original: ResumeContent): ResumeContent {
-  return normalizeTailoredResume(next, original);
+  const normalized = normalizeTailoredResume(next, original);
+  return {
+    ...normalized,
+    profile: {
+      ...normalized.profile,
+      summary: original.profile.summary.trim() ? normalized.profile.summary : original.profile.summary,
+    },
+    selfReview: original.selfReview.trim() ? normalized.selfReview : original.selfReview,
+  };
 }
 
 function normalizeEducation(

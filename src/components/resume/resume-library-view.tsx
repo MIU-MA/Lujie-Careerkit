@@ -51,7 +51,8 @@ export function ResumeLibraryView({
   copyingCardId?: string;
 }) {
   const t = useTranslations("app.resumeLibrary");
-  const optimizedCount = cards.filter((card) => card.kind === "优化后简历").length;
+  const jobOptimizedCount = cards.filter((card) => card.optimizationKind === "job").length;
+  const generalOptimizedCount = cards.filter((card) => card.optimizationKind === "general").length;
 
   return (
     <section className="text-foreground">
@@ -60,7 +61,7 @@ export function ResumeLibraryView({
           <div>
             <h1 className="font-serif text-3xl font-semibold tracking-normal">{t("title")}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {t("count", { count: cards.length, optimizedCount })}
+              {t("count", { count: cards.length, jobOptimizedCount, generalOptimizedCount })}
             </p>
             {status !== savedStatus && <p className="mt-3 text-xs text-muted-foreground">{status}</p>}
           </div>
@@ -186,7 +187,11 @@ function ResumeCard({
 }) {
   const locale = useLocale();
   const t = useTranslations("app.resumeLibrary");
-  const kindLabel = card.kind === "优化后简历" ? t("kind.optimized") : t("kind.original");
+  const kindLabel = card.optimizationKind === "job"
+    ? t("kind.jobOptimized")
+    : card.optimizationKind === "general"
+      ? t("kind.generalOptimized")
+      : t("kind.original");
   const updatedAtLabel = card.updatedAtDate
     ? t(`updatedAt.${card.updatedAtKind}`, { date: new Date(card.updatedAtDate).toLocaleDateString(locale) })
     : t(`updatedAt.${card.updatedAtKind}`);

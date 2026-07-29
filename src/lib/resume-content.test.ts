@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { coerceResumeContent, normalizeResumeContent, resumeContentFromText, resumeContentInputSchema } from "./resume-content";
+import {
+  coerceResumeContent,
+  normalizeResumeContent,
+  preserveResumeInternalMetadata,
+  resumeContentFromText,
+  resumeContentInputSchema,
+} from "./resume-content";
 import type { ResumeContent } from "./types";
 
 const emptyResume: ResumeContent = {
@@ -89,6 +95,22 @@ describe("resume content normalization", () => {
     expect(normalized.customSections?.[0]?.content).toBe("技术驱动艺术\n高产出与奖项验证");
   });
 
+  it("does not mistake decimal values for numbered-list prefixes", () => {
+    const normalized = normalizeResumeContent({
+      ...emptyResume,
+      education: [{
+        school: "示例大学",
+        degree: "本科",
+        major: "计算机科学",
+        start: "2022",
+        end: "2026",
+        highlights: ["GPA 3.8/4.0", "3.8/4.0"],
+      }],
+    });
+
+    expect(normalized.education[0]?.highlights).toEqual(["GPA 3.8/4.0", "3.8/4.0"]);
+  });
+
   it("keeps safe uploaded logos and built-in icon references", () => {
     const normalized = normalizeResumeContent({
       ...emptyResume,
@@ -110,6 +132,21 @@ describe("resume content normalization", () => {
 
   it("normalizes editor settings without dropping optimization metadata", () => {
     const metadata = { ...emptyResume, basics: { ...emptyResume.basics, name: "原始简历" } };
+    const stages = {
+      analysis: {
+        company: "示例公司",
+        title: "示例岗位",
+        deadline: null,
+        requirements: ["沟通能力"],
+        keywords: ["沟通"],
+        bonusPoints: [],
+        risks: [],
+        suggestions: ["突出协作经历"],
+      },
+      draft: metadata,
+      acceptedChangeIds: ["profile.summary"],
+      editedValues: { "profile.summary": "人工调整后的内容" },
+    };
     const normalized = resumeContentInputSchema.parse({
       ...emptyResume,
       editor: {
@@ -117,10 +154,33 @@ describe("resume content normalization", () => {
         themeConfig: { fontFamily: "Inter;}</style><script>alert(1)</script>" },
       },
       _tailoringBaseResume: metadata,
-    }) as ResumeContent & { _tailoringBaseResume: ResumeContent };
+      _optimizationStages: stages,
+    }) as ResumeContent & {
+      _tailoringBaseResume: ResumeContent;
+      _optimizationStages: typeof stages;
+    };
 
     expect(normalized.editor?.themeConfig?.fontFamily).toBe("Inter");
     expect(normalized._tailoringBaseResume.basics.name).toBe("原始简历");
+    expect(normalized._optimizationStages).toEqual(stages);
+  });
+
+  it("preserves optimization stages when the editor rebuilds visible resume fields", () => {
+    const source = {
+      ...emptyResume,
+      _tailoringBaseResume: { ...emptyResume, basics: { ...emptyResume.basics, name: "原始简历" } },
+      _optimizationMeta: { summary: "优化说明" },
+      _optimizationStages: { acceptedChangeIds: ["education.0.highlights.0"] },
+    } as ResumeContent;
+    const rebuilt = { ...emptyResume, basics: { ...emptyResume.basics, name: "编辑后的简历" } };
+
+    const result = preserveResumeInternalMetadata(rebuilt, source) as ResumeContent & Record<string, unknown>;
+    const sourceRecord = source as ResumeContent & Record<string, unknown>;
+
+    expect(result.basics.name).toBe("编辑后的简历");
+    expect(result._tailoringBaseResume).toEqual(sourceRecord._tailoringBaseResume);
+    expect(result._optimizationMeta).toEqual(sourceRecord._optimizationMeta);
+    expect(result._optimizationStages).toEqual(sourceRecord._optimizationStages);
   });
 
   it("drops malformed serialized editor sections before reopening the editor", () => {

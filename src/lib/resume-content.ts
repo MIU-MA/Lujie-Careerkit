@@ -217,6 +217,21 @@ export function normalizeResumeContent(content: ResumeContent, fallbackName = "�
   };
 }
 
+const RESUME_INTERNAL_METADATA_KEYS = [
+  "_tailoringBaseResume",
+  "_optimizationMeta",
+  "_optimizationStages",
+] as const;
+
+export function preserveResumeInternalMetadata(content: ResumeContent, source: ResumeContent): ResumeContent {
+  const next = { ...content } as ResumeContent & Record<string, unknown>;
+  const sourceRecord = source as ResumeContent & Record<string, unknown>;
+  for (const key of RESUME_INTERNAL_METADATA_KEYS) {
+    if (sourceRecord[key] !== undefined) next[key] = sourceRecord[key];
+  }
+  return next;
+}
+
 function normalizeEditorSettings(value: unknown): ResumeContent["editor"] {
   const editor = toRecord(value);
   if (!Object.keys(editor).length) return undefined;
@@ -498,7 +513,7 @@ function clean(value: string) {
     .replace(/\u0000/g, "")
     .replace(layoutNoisePattern, " ")
     .replace(/^[\s•·●○◦▪▫■□◆◇▶▷►▸▹-]+/, "")
-    .replace(/(?:^|\s)(?:\d{1,2}[.)、]|[（(]\d{1,2}[)）])\s*/g, " ")
+    .replace(/(?:^|\s)(?:\d{1,2}[.)、]|[（(]\d{1,2}[)）])\s+/g, " ")
     .replace(/^[\s•·●○◦▪▫■□◆◇▶▷►▸▹-]+/, "")
     .replace(/\s+/g, " ")
     .trim();

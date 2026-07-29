@@ -40,6 +40,7 @@ import {
   getCombinedPageImageLayout,
 } from "@/lib/resume-export-layout";
 import { contentToJadeResume, jadeResumeToContent } from "@/lib/resume-adapter";
+import { preserveResumeInternalMetadata } from "@/lib/resume-content";
 import { buildDocxThemeConfig, type DocxThemeConfig } from "@/lib/resume-docx-style";
 import {
   buildResumeEditorPath,
@@ -56,10 +57,7 @@ import { buildUploadedResumeDraft } from "@/lib/resume-upload";
 import { DEFAULT_RESUME_THEME } from "@/lib/resume-theme";
 import { readSmartOnePagePreference } from "@/lib/resume-preferences";
 import { normalizeOptimizedResumeVersionName } from "@/lib/resume-versioning";
-import type {
-  ResumeDiagnosis,
-  ResumeOptimizationPreference,
-} from "@/lib/ai/resume-diagnosis";
+import type { ResumeDiagnosis } from "@/lib/ai/resume-diagnosis";
 import type { ResumeContent, ResumeOptimizationMeta } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/stores/editor-store";
@@ -99,18 +97,21 @@ type ResumeWorkbenchProps = {
     resumeContent: ResumeContent;
     diagnosis: ResumeDiagnosis;
     selectedIssueIds: string[];
-    preferences: ResumeOptimizationPreference[];
     additionalDirection: string;
     locale: "zh-CN" | "en";
   }) => Promise<{
-    version: ResumeVersionCard;
+    draft: ResumeContent;
     message?: string;
     optimization?: ResumeOptimizationMeta;
   }>;
   onResumeOptimized: (result: {
     before: ResumeContent;
     after: ResumeContent;
-    version: ResumeVersionCard;
+    sourceVersionId?: string;
+    diagnosis: ResumeDiagnosis;
+    selectedIssueIds: string[];
+    selectedIssues: ResumeDiagnosis["issues"];
+    additionalDirection: string;
     message?: string;
     optimization?: ResumeOptimizationMeta;
   }) => void;
@@ -180,7 +181,7 @@ export function ResumeWorkbench({
   const localImportFallbackRef = useRef(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const importNoticeTimerRef = useRef<number | null>(null);
-  const saveContextRef = useRef({ editingTarget, editingTitle, saveResume, setResume });
+  const saveContextRef = useRef({ editingTarget, editingTitle, editingContent, saveResume, setResume });
 
   const currentResume = useResumeStore((state) => state.currentResume);
   const sections = useResumeStore((state) => state.sections);
@@ -228,8 +229,8 @@ export function ResumeWorkbench({
   }, [resume, savedStatus, t, versions]);
 
   useEffect(() => {
-    saveContextRef.current = { editingTarget, editingTitle, saveResume, setResume };
-  }, [editingTarget, editingTitle, saveResume, setResume]);
+    saveContextRef.current = { editingTarget, editingTitle, editingContent, saveResume, setResume };
+  }, [editingContent, editingTarget, editingTitle, saveResume, setResume]);
 
   useEffect(() => {
     return () => {
@@ -248,10 +249,11 @@ export function ResumeWorkbench({
       const {
         editingTarget: target,
         editingTitle: title,
+        editingContent: sourceContent,
         saveResume: persistResume,
         setResume: setMainResume,
       } = saveContextRef.current;
-      const content = jadeResumeToContent(liveResume);
+      const content = preserveResumeInternalMetadata(jadeResumeToContent(liveResume), sourceContent);
       const resolvedTitle = resolveResumeTitle(content, title);
       const contentWithTitle = withResumeDisplayName(content, resolvedTitle);
       setStatus(context.source === "auto" ? t("status.autoSaving") : t("status.saving"));
@@ -512,24 +514,26 @@ export function ResumeWorkbench({
   async function handleDiagnosisOptimization(input: {
     diagnosis: ResumeDiagnosis;
     selectedIssueIds: string[];
-    preferences: ResumeOptimizationPreference[];
     additionalDirection: string;
   }) {
     setIsOptimizingResume(true);
     setStatus(t("status.optimizing"));
     try {
       const result = await optimizeResume({
-        resumeContent: diagnosisResume,
-        diagnosis: input.diagnosis,
-        selectedIssueIds: input.selectedIssueIds,
-        preferences: input.preferences,
-        additionalDirection: input.additionalDirection,
+          resumeContent: diagnosisResume,
+          diagnosis: input.diagnosis,
+          selectedIssueIds: input.selectedIssueIds,
+          additionalDirection: input.additionalDirection,
         locale,
       });
       onResumeOptimized({
         before: diagnosisResume,
-        after: result.version.content,
-        version: result.version,
+        after: result.draft,
+        sourceVersionId: editingTarget.kind === "version" ? editingTarget.id : undefined,
+          diagnosis: input.diagnosis,
+          selectedIssueIds: input.selectedIssueIds,
+          selectedIssues: input.diagnosis.issues.filter((issue) => input.selectedIssueIds.includes(issue.id)),
+          additionalDirection: input.additionalDirection,
         message: result.message,
         optimization: result.optimization,
       });
