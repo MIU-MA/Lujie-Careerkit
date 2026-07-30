@@ -55,7 +55,45 @@
 - **专属面试准备资料**：结合所选简历与完整 JD，生成资料概览、能力画像、证据与差距、核心知识、经历深挖、针对性问题和准备计划，按简历长期保存，并可导出为可编辑 Word 文档或适合打印的 PDF。
 - **投递进展管理**：记录公司、岗位、渠道、阶段、截止日期、跟进日期、备注、JD 和绑定简历版本。
 - **模拟面试与复盘**：根据简历和 JD 生成面试题，保存逐题回答，并生成可回看、可继续改进的 AI 复盘报告。
+- **可复用 Agent Skills**：在 Codex、Claude Code 等兼容 Agent Skills 的工具中直接使用四个中文 Skill，完成简历优化、面试准备、模拟面试和求职申请写作。
 - **数据与隐私可控**：简历、岗位、投递、面试资料、模拟记录和设置保存在本机 SQLite 数据库里，适合个人长期维护。
+
+## Agent Skills
+
+仓库在 [`.agents/skills`](.agents/skills) 中提供四个中文、与具体模型无关的 Agent Skill。从本仓库目录启动 Codex 时会自动发现，无需额外配置。
+
+| Skill | 用途 |
+|---|---|
+| `$resume-improvement` | 诊断并优化简历，也可结合 JD 做岗位定制 |
+| `$prepare-job-interview` | 主动调研公司与岗位，生成结构化面试准备资料 |
+| `$mock-interview-coach` | 开展逐题模拟面试、动态追问和循证复盘 |
+| `$job-application-writer` | 撰写求职信、招聘平台招呼语、邮件、内推和跟进消息 |
+
+如果希望在所有项目中使用，把四个文件夹复制到个人 Skill 目录：
+
+```bash
+# Codex
+mkdir -p ~/.agents/skills
+cp -R .agents/skills/* ~/.agents/skills/
+
+# Claude Code
+mkdir -p ~/.claude/skills
+cp -R .agents/skills/* ~/.claude/skills/
+```
+
+PowerShell：
+
+```powershell
+# Codex
+New-Item -ItemType Directory -Force "$HOME\.agents\skills"
+Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.agents\skills" -Recurse -Force
+
+# Claude Code
+New-Item -ItemType Directory -Force "$HOME\.claude\skills"
+Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.claude\skills" -Recurse -Force
+```
+
+Codex 使用 `$skill-name` 调用，Claude Code 使用 `/skill-name` 调用。只要搜索工具可用且用户没有禁止联网，涉及公司和岗位的 Skill 会主动调研最新官方岗位与业务信息，记录来源、日期和可信度，并把公开面经明确标记为非官方线索；不会上传简历、搜索个人联系方式或编造候选人事实。
 
 ## 数据与隐私
 
@@ -85,7 +123,7 @@ docker run -d --name lujie-careerkit \
 
 `LUJIE_SETTINGS_SECRET` 用于加密本机保存的设置密钥，请替换成一串足够长的随机字符串。
 
-使用 `latest` 会跟随最新的 `main` 构建；发布 v0.2.4 后，也可以把镜像标签固定为 `v0.2.4`。
+使用 `latest` 会跟随最新的 `main` 构建；发布 v0.2.5 后，也可以把镜像标签固定为 `v0.2.5`。
 
 ### 本地开发
 
@@ -139,6 +177,15 @@ AI 功能会在设置保存且连接测试成功后启用。
 
 ## 版本更新
 
+### v0.2.5
+
+#### 公开 Agent Skills
+
+- 公开四个可复用中文 Agent Skill，覆盖简历优化、面试准备、模拟面试和求职申请写作。
+- Codex 可从 `.agents/skills` 直接发现，同一套文件也可复制到 Claude Code 或其他兼容 Agent Skills 的工具中使用。
+- 涉及岗位的 Skill 在搜索可用时会主动调研最新公司与岗位信息，保留来源日期和可信度，并严格遵守隐私与不编造事实的边界。
+- 清理被忽略的草稿位置和空的旧 Skill 目录，仅保留四个已验证 Skill 及必要参考资料。
+
 ### v0.2.4
 
 #### 面试准备资料导出
@@ -164,19 +211,6 @@ AI 功能会在设置保存且连接测试成功后启用。
 - 用户可选择提升表达清晰度、强化成果、精简内容或改善 ATS 可读性，并通过可选的“其他补充”纠正诊断理解、限定处理范围或补充语气要求。
 - AI 只处理用户勾选的问题，不擅自扩大优化范围；不得编造经历、技能、数字或结果，也不会把“简历未呈现”直接判断为候选人不具备。
 - 确认后生成独立优化版本并保留原简历；请求期间会锁定诊断选项，分析和优化接口均校验输入、脱敏快照与结构化输出。
-
-### v0.2.2
-
-#### 求职信与招呼语
-
-- 在简历编辑器的“创建副本”和“导出”之间新增“求职信”入口，直接使用当前编辑内容与完整 JD 生成申请文本，无需先保存简历。
-- 求职信适合招聘笔记私信、邮件和正式投递，强调礼貌、完整和岗位匹配；招呼语适合 Boss 直聘等即时沟通场景，优先展示到岗时间、可实习时长、每周到岗天数和核心能力证据。
-- 支持补充真实的到岗安排、毕业时间和求职动机；生成结果可直接编辑、复制和重新生成，两种文本分别保留结果。
-
-#### 真实性与隐私
-
-- 到岗时间、实习时长和每周到岗天数只会使用用户明确填写的信息，模型不得自行推测；JD 中缺少简历证据的要求不会被写成候选人已经具备。
-- AI 请求继续过滤邮箱、电话、个人链接、Logo、编辑器设置和内部优化元数据，并对输入长度与结构化输出进行校验。
 
 ## 常见问题
 

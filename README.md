@@ -55,7 +55,45 @@ Try the live preview at [https://lujie.chozzc.dev](https://lujie.chozzc.dev).
 - **Role-specific interview prep**: combine a selected resume with a complete JD to generate and save a guide with an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan, then export the complete guide as an editable Word document or print-ready PDF.
 - **Application tracking**: record companies, roles, sources, stages, deadlines, follow-up dates, notes, JD text, and linked resume versions.
 - **Mock interviews and review**: generate interview questions from a resume and JD, save answer drafts, and create an AI review report you can revisit.
+- **Reusable Agent Skills**: use the included Chinese skills in Codex, Claude Code, and other Agent Skills-compatible tools for resume improvement, interview preparation, mock interviews, and job application writing.
 - **Data and privacy controls**: resumes, jobs, applications, interview prep guides, mock sessions, and settings are stored in a local SQLite database for long-term personal use.
+
+## Agent Skills
+
+The repository includes four Chinese, tool-independent Agent Skills under [`.agents/skills`](.agents/skills). Codex automatically discovers them when launched inside this repository.
+
+| Skill | Purpose |
+|---|---|
+| `$resume-improvement` | Diagnose and improve a resume, with optional JD-specific tailoring |
+| `$prepare-job-interview` | Research a company and role, then build a structured interview preparation guide |
+| `$mock-interview-coach` | Run an interactive mock interview with adaptive follow-ups and evidence-based review |
+| `$job-application-writer` | Write cover letters, recruiter greetings, emails, referrals, and follow-up messages |
+
+To use the skills in every project, copy the four folders to the personal skills directory:
+
+```bash
+# Codex
+mkdir -p ~/.agents/skills
+cp -R .agents/skills/* ~/.agents/skills/
+
+# Claude Code
+mkdir -p ~/.claude/skills
+cp -R .agents/skills/* ~/.claude/skills/
+```
+
+PowerShell:
+
+```powershell
+# Codex
+New-Item -ItemType Directory -Force "$HOME\.agents\skills"
+Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.agents\skills" -Recurse -Force
+
+# Claude Code
+New-Item -ItemType Directory -Force "$HOME\.claude\skills"
+Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.claude\skills" -Recurse -Force
+```
+
+Codex can invoke a skill with `$skill-name`; Claude Code can invoke it with `/skill-name`. When search tools are available and the user has not disabled web access, role-related skills actively research current official job and company information, keep sources and dates, and treat public interview reports as non-official leads. They never upload a resume, search personal contact information, or invent candidate facts.
 
 ## Data and Privacy
 
@@ -85,7 +123,7 @@ Open [http://localhost:3000](http://localhost:3000). SQLite data is stored in th
 
 `LUJIE_SETTINGS_SECRET` encrypts locally saved settings secrets. Replace the example value with a long random string.
 
-Use `latest` to follow the newest `main` build. After v0.2.4 is published, use `v0.2.4` to pin that release.
+Use `latest` to follow the newest `main` build. After v0.2.5 is published, use `v0.2.5` to pin that release.
 
 ### Local Development
 
@@ -139,6 +177,15 @@ AI features stay disabled until the settings are saved and the connection test s
 
 ## Release Notes
 
+### v0.2.5
+
+#### Public Agent Skills
+
+- Published four reusable Chinese Agent Skills for resume improvement, interview preparation, mock interviews, and job application writing.
+- Codex discovers the skills directly from `.agents/skills`; the same folders can be copied to Claude Code or other Agent Skills-compatible tools.
+- Role-related skills actively research current company and job information when search is available, preserve source dates and confidence, and enforce privacy and no-fabrication boundaries.
+- Removed the ignored draft location and an empty legacy skill folder, leaving only the four validated skills and their required references.
+
 ### v0.2.4
 
 #### Interview preparation export
@@ -164,19 +211,6 @@ AI features stay disabled until the settings are saved and the connection test s
 - Users can choose clarity, impact, concision, or ATS readability and add optional instructions to correct the diagnosis, limit the scope, or specify the desired tone.
 - AI changes only the selected issues and cannot expand the scope on its own, invent experience, skills, metrics, or results, or treat missing resume evidence as proof that the candidate lacks a capability.
 - Confirmation creates an independent optimized version while preserving the original. Diagnosis controls are locked during generation, and both analysis and optimization validate request input, sanitized snapshots, and structured model output.
-
-### v0.2.2
-
-#### Cover letters and recruiter greetings
-
-- Added a Cover Letter action between “Create copy” and “Export” in the resume editor. It uses the current unsaved editor content and a complete JD, so users do not need to save first.
-- Cover letters target recruiting-post messages, email, and formal applications with a courteous, complete, role-specific structure. Recruiter greetings target direct-chat platforms such as Boss Zhipin and lead with availability, internship duration, weekly attendance, and the strongest matching evidence.
-- Users can add factual availability, graduation, and motivation details, then edit, copy, or regenerate the output. Each writing mode keeps its own generated result.
-
-#### Truthfulness and privacy
-
-- Start date, internship duration, and weekly attendance are used only when the user explicitly provides them. Requirements found only in the JD are never presented as candidate capabilities.
-- AI requests continue to remove email addresses, phone numbers, personal links, logos, editor settings, and internal optimization metadata, with bounded input and schema-validated output.
 
 ## FAQ
 
