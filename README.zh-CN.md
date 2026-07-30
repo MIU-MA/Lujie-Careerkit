@@ -26,7 +26,7 @@
 
 ## 项目简介
 
-录阶面向实习、校招和职业求职场景，把简历编辑、岗位匹配、投递管理、面试准备、模拟练习和 AI 复盘放在同一个 AI 驱动的求职工作台里。你可以围绕不同岗位维护多份简历版本，根据岗位描述生成更贴合岗位要求的简历表达与专属面试准备资料，记录每一次投递进展，并在面试前后持续沉淀知识、回答、反馈和复盘材料。
+录阶面向实习、校招和职业求职场景，把简历编辑、岗位匹配、投递管理、面试准备、模拟练习和 AI 复盘放在同一个 Agent 驱动的求职工作台里。你可以围绕不同岗位维护多份简历版本，根据岗位描述生成更贴合岗位要求的简历表达与专属面试准备资料，记录每一次投递进展，并在面试前后持续沉淀知识、回答、反馈和复盘材料。
 
 ## 在线预览
 
@@ -55,45 +55,28 @@
 - **专属面试准备资料**：结合所选简历与完整 JD，生成资料概览、能力画像、证据与差距、核心知识、经历深挖、针对性问题和准备计划，按简历长期保存，并可导出为可编辑 Word 文档或适合打印的 PDF。
 - **投递进展管理**：记录公司、岗位、渠道、阶段、截止日期、跟进日期、备注、JD 和绑定简历版本。
 - **模拟面试与复盘**：根据简历和 JD 生成面试题，保存逐题回答，并生成可回看、可继续改进的 AI 复盘报告。
-- **可复用 Agent Skills**：在 Codex、Claude Code 等兼容 Agent Skills 的工具中直接使用四个中文 Skill，完成简历优化、面试准备、模拟面试和求职申请写作。
+- **求职 Agent Skills**：将录阶中已经打磨的简历优化、面试准备、模拟面试和求职沟通流程整理为四个 Skill，让 Codex、Claude Code 等编码智能体也能复用。
 - **数据与隐私可控**：简历、岗位、投递、面试资料、模拟记录和设置保存在本机 SQLite 数据库里，适合个人长期维护。
 
 ## Agent Skills
 
-仓库在 [`.agents/skills`](.agents/skills) 中提供四个中文、与具体模型无关的 Agent Skill。从本仓库目录启动 Codex 时会自动发现，无需额外配置。
+录阶不只提供应用界面，也把其中适合交给编码智能体执行的求职流程整理成了四个 Agent Skill。每个 Skill 都包含完整的执行步骤、调研要求、事实边界和质量检查。
 
 | Skill | 用途 |
 |---|---|
-| `$resume-improvement` | 诊断并优化简历，也可结合 JD 做岗位定制 |
-| `$prepare-job-interview` | 主动调研公司与岗位，生成结构化面试准备资料 |
-| `$mock-interview-coach` | 开展逐题模拟面试、动态追问和循证复盘 |
-| `$job-application-writer` | 撰写求职信、招聘平台招呼语、邮件、内推和跟进消息 |
+| `resume-improvement` | 诊断并优化简历，也可结合 JD 做岗位定制 |
+| `prepare-job-interview` | 主动调研公司与岗位，生成结构化面试准备资料 |
+| `mock-interview-coach` | 开展逐题模拟面试、动态追问和循证复盘 |
+| `job-application-writer` | 撰写求职信、招聘平台招呼语、邮件、内推和跟进消息 |
 
-如果希望在所有项目中使用，把四个文件夹复制到个人 Skill 目录：
+克隆仓库后，从项目目录启动 Codex，直接描述任务即可；Codex 会根据任务自动选择对应 Skill，也可以用 `$resume-improvement` 等名称明确指定。Claude Code 等其他编码智能体也可以直接读取相应的 `SKILL.md` 来执行同一套流程。
 
-```bash
-# Codex
-mkdir -p ~/.agents/skills
-cp -R .agents/skills/* ~/.agents/skills/
+例如：
 
-# Claude Code
-mkdir -p ~/.claude/skills
-cp -R .agents/skills/* ~/.claude/skills/
-```
+- `使用 $resume-improvement 分析这份简历，并针对后端开发岗位提出修改建议。`
+- `使用 $prepare-job-interview，结合我的简历和这份 JD 生成面试准备资料。`
 
-PowerShell：
-
-```powershell
-# Codex
-New-Item -ItemType Directory -Force "$HOME\.agents\skills"
-Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.agents\skills" -Recurse -Force
-
-# Claude Code
-New-Item -ItemType Directory -Force "$HOME\.claude\skills"
-Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.claude\skills" -Recurse -Force
-```
-
-Codex 使用 `$skill-name` 调用，Claude Code 使用 `/skill-name` 调用。只要搜索工具可用且用户没有禁止联网，涉及公司和岗位的 Skill 会主动调研最新官方岗位与业务信息，记录来源、日期和可信度，并把公开面经明确标记为非官方线索；不会上传简历、搜索个人联系方式或编造候选人事实。
+涉及具体公司或岗位时，Skill 会在搜索工具可用且用户未禁止联网的情况下主动调研，并要求标注来源、区分事实与推断，禁止编造候选人的经历、技能或成果。
 
 ## 数据与隐私
 
@@ -179,12 +162,10 @@ AI 功能会在设置保存且连接测试成功后启用。
 
 ### v0.2.5
 
-#### 公开 Agent Skills
+#### 将求职流程沉淀为 Agent Skills
 
-- 公开四个可复用中文 Agent Skill，覆盖简历优化、面试准备、模拟面试和求职申请写作。
-- Codex 可从 `.agents/skills` 直接发现，同一套文件也可复制到 Claude Code 或其他兼容 Agent Skills 的工具中使用。
-- 涉及岗位的 Skill 在搜索可用时会主动调研最新公司与岗位信息，保留来源日期和可信度，并严格遵守隐私与不编造事实的边界。
-- 清理被忽略的草稿位置和空的旧 Skill 目录，仅保留四个已验证 Skill 及必要参考资料。
+- 将录阶中已经打磨的简历优化、面试准备、模拟面试和求职申请写作流程整理为四个 Agent Skill。
+- Skill 位于 `.agents/skills`，Codex 可在仓库内直接发现，Claude Code 等其他编码智能体也可读取并复用相同流程。
 
 ### v0.2.4
 

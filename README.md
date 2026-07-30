@@ -26,7 +26,7 @@
 
 ## Overview
 
-LuJie CareerKit is built for internships, campus recruiting, and career job searches. It brings resume editing, job-description matching, application tracking, interview preparation, mock practice, and AI review into one AI-powered career workspace. You can maintain different resume versions for different roles, use job descriptions to generate resume wording and role-specific interview prep guides that better match role requirements, track every application, and keep refining knowledge, answers, feedback, and review notes.
+LuJie CareerKit is built for internships, campus recruiting, and career job searches. It brings resume editing, job-description matching, application tracking, interview preparation, mock practice, and AI review into one agent-powered career workspace. You can maintain different resume versions for different roles, use job descriptions to generate resume wording and role-specific interview prep guides that better match role requirements, track every application, and keep refining knowledge, answers, feedback, and review notes.
 
 ## Online Preview
 
@@ -55,45 +55,28 @@ Try the live preview at [https://lujie.chozzc.dev](https://lujie.chozzc.dev).
 - **Role-specific interview prep**: combine a selected resume with a complete JD to generate and save a guide with an overview, capability profile, evidence gaps, core knowledge, experience deep dives, targeted questions, and a preparation plan, then export the complete guide as an editable Word document or print-ready PDF.
 - **Application tracking**: record companies, roles, sources, stages, deadlines, follow-up dates, notes, JD text, and linked resume versions.
 - **Mock interviews and review**: generate interview questions from a resume and JD, save answer drafts, and create an AI review report you can revisit.
-- **Reusable Agent Skills**: use the included Chinese skills in Codex, Claude Code, and other Agent Skills-compatible tools for resume improvement, interview preparation, mock interviews, and job application writing.
+- **Job-search Agent Skills**: reuse LuJie's refined workflows for resume improvement, interview preparation, mock interviews, and job application writing in coding agents such as Codex and Claude Code.
 - **Data and privacy controls**: resumes, jobs, applications, interview prep guides, mock sessions, and settings are stored in a local SQLite database for long-term personal use.
 
 ## Agent Skills
 
-The repository includes four Chinese, tool-independent Agent Skills under [`.agents/skills`](.agents/skills). Codex automatically discovers them when launched inside this repository.
+LuJie provides more than an application interface. Four of its refined job-search workflows are also packaged as Agent Skills for coding agents. Each skill includes a complete workflow, research requirements, factual boundaries, and quality checks rather than a single prompt.
 
 | Skill | Purpose |
 |---|---|
-| `$resume-improvement` | Diagnose and improve a resume, with optional JD-specific tailoring |
-| `$prepare-job-interview` | Research a company and role, then build a structured interview preparation guide |
-| `$mock-interview-coach` | Run an interactive mock interview with adaptive follow-ups and evidence-based review |
-| `$job-application-writer` | Write cover letters, recruiter greetings, emails, referrals, and follow-up messages |
+| `resume-improvement` | Diagnose and improve a resume, with optional JD-specific tailoring |
+| `prepare-job-interview` | Research a company and role, then build a structured interview preparation guide |
+| `mock-interview-coach` | Run an interactive mock interview with adaptive follow-ups and evidence-based review |
+| `job-application-writer` | Write cover letters, recruiter greetings, emails, referrals, and follow-up messages |
 
-To use the skills in every project, copy the four folders to the personal skills directory:
+After cloning the repository, launch Codex from the project directory and describe the task directly. Codex can select the relevant skill automatically, or you can explicitly name one such as `$resume-improvement`. Claude Code and other coding agents can also read the corresponding `SKILL.md` and follow the same workflow.
 
-```bash
-# Codex
-mkdir -p ~/.agents/skills
-cp -R .agents/skills/* ~/.agents/skills/
+For example:
 
-# Claude Code
-mkdir -p ~/.claude/skills
-cp -R .agents/skills/* ~/.claude/skills/
-```
+- `Use $resume-improvement to review this resume for a backend engineering role.`
+- `Use $prepare-job-interview with my resume and this JD to build an interview preparation guide.`
 
-PowerShell:
-
-```powershell
-# Codex
-New-Item -ItemType Directory -Force "$HOME\.agents\skills"
-Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.agents\skills" -Recurse -Force
-
-# Claude Code
-New-Item -ItemType Directory -Force "$HOME\.claude\skills"
-Copy-Item -Path ".agents\skills\*" -Destination "$HOME\.claude\skills" -Recurse -Force
-```
-
-Codex can invoke a skill with `$skill-name`; Claude Code can invoke it with `/skill-name`. When search tools are available and the user has not disabled web access, role-related skills actively research current official job and company information, keep sources and dates, and treat public interview reports as non-official leads. They never upload a resume, search personal contact information, or invent candidate facts.
+For company- or role-specific tasks, the skills proactively research current information when search tools are available and the user has not disabled web access. They require sources, distinguish facts from inference, and prohibit inventing candidate experience, skills, or outcomes.
 
 ## Data and Privacy
 
@@ -179,12 +162,10 @@ AI features stay disabled until the settings are saved and the connection test s
 
 ### v0.2.5
 
-#### Public Agent Skills
+#### Turn refined job-search workflows into Agent Skills
 
-- Published four reusable Chinese Agent Skills for resume improvement, interview preparation, mock interviews, and job application writing.
-- Codex discovers the skills directly from `.agents/skills`; the same folders can be copied to Claude Code or other Agent Skills-compatible tools.
-- Role-related skills actively research current company and job information when search is available, preserve source dates and confidence, and enforce privacy and no-fabrication boundaries.
-- Removed the ignored draft location and an empty legacy skill folder, leaving only the four validated skills and their required references.
+- Packaged LuJie's refined workflows for resume improvement, interview preparation, mock interviews, and job application writing as four Agent Skills.
+- The skills live under `.agents/skills`, where Codex can discover them inside the repository and other coding agents such as Claude Code can read and reuse the same workflows.
 
 ### v0.2.4
 
