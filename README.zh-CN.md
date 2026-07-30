@@ -36,9 +36,9 @@
 
 | **控制中心** | **简历库** |
 | --- | --- |
-| ![控制中心](public/images/01-dashboard.png) | ![简历库](public/images/02-resume-library.png) |
+| ![控制中心](public/images/01-dashboard.png?v=0.2.5) | ![简历库](public/images/02-resume-library.png?v=0.2.5) |
 | **简历编辑器** | **JD 匹配优化** |
-| ![简历编辑器](public/images/03-resume-editor.png) | ![JD 匹配优化](public/images/04-jd-match.png) |
+| ![简历编辑器](public/images/03-resume-editor.png) | ![JD 匹配优化](public/images/04-jd-match.png?v=0.2.5) |
 | **JD 匹配优化简历** | **面试助手** |
 | ![JD 匹配优化简历](public/images/05-jd-optimized-resume.png) | ![面试助手](public/images/06-interview-assistant.png) |
 | **模拟面试** | **AI 复盘** |

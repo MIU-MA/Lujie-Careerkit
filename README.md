@@ -36,9 +36,9 @@ Try the live preview at [https://lujie.chozzc.dev](https://lujie.chozzc.dev).
 
 | **Control Center** | **Resume Library** |
 | --- | --- |
-| ![Control Center](public/images/01-dashboard.png) | ![Resume Library](public/images/02-resume-library.png) |
+| ![Control Center](public/images/01-dashboard.png?v=0.2.5) | ![Resume Library](public/images/02-resume-library.png?v=0.2.5) |
 | **Resume Editor** | **JD Matching** |
-| ![Resume Editor](public/images/03-resume-editor.png) | ![JD Matching](public/images/04-jd-match.png) |
+| ![Resume Editor](public/images/03-resume-editor.png) | ![JD Matching](public/images/04-jd-match.png?v=0.2.5) |
 | **JD-Optimized Resume** | **Interview Assistant** |
 | ![JD-Optimized Resume](public/images/05-jd-optimized-resume.png) | ![Interview Assistant](public/images/06-interview-assistant.png) |
 | **Mock Interview** | **AI Review** |
